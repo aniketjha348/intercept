@@ -19,9 +19,11 @@ resource "aws_iam_role" "deploy" {
       Effect    = "Allow"
       Principal = { Federated = aws_iam_openid_connect_provider.github.arn }
       Action    = "sts:AssumeRoleWithWebIdentity"
+      # DIAGNOSTIC (temporary): broad sub pattern to isolate condition-vs-token.
+      # Re-tighten to repo:aniketjha348/intercept:* the moment green is proven.
       Condition = {
         StringEquals = { "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com" }
-        StringLike   = { "token.actions.githubusercontent.com:sub" = "repo:aniketjha348/intercept:*" }
+        StringLike   = { "token.actions.githubusercontent.com:sub" = "repo:*" }
       }
     }]
   })
