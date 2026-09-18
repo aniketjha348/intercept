@@ -16,6 +16,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_INCOMING = "extra_incoming"
+        const val EXTRA_ANALYZE = "extra_analyze"
     }
 
     private val permissionLauncher =
@@ -48,6 +49,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         requestCallPermissions()
         val startAtIncoming = intent?.getBooleanExtra(EXTRA_INCOMING, false) == true
+        val startAtAnalyze = intent?.getBooleanExtra(EXTRA_ANALYZE, false) == true &&
+            !startAtIncoming
         // Share-sheet entry: verify the shared link/text immediately.
         val shared = if (intent?.action == android.content.Intent.ACTION_SEND) {
             intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
@@ -66,7 +69,7 @@ class MainActivity : ComponentActivity() {
                     NavGraph(
                         container = appContainer(),
                         startAtIncoming = startAtIncoming,
-                        startAtAnalyze = !shared.isNullOrBlank() && !startAtIncoming,
+                        startAtAnalyze = (!shared.isNullOrBlank() || startAtAnalyze) && !startAtIncoming,
                     )
                 }
             }

@@ -83,6 +83,11 @@ class AppContainer(context: Context) {
         get() = prefs.getBoolean("auto_apps", false)
         set(v) = prefs.edit().putBoolean("auto_apps", v).apply()
 
+    /** Floating bubble over any app (needs draw-over-apps permission). */
+    var overlayOn: Boolean
+        get() = prefs.getBoolean("overlay_on", false)
+        set(v) = prefs.edit().putBoolean("overlay_on", v).apply()
+
     /** Set by screening service / home demo so routes stay free of special chars. */
     var pendingIncomingCaller: String? = null
     val sessionCallers = mutableMapOf<String, String>()

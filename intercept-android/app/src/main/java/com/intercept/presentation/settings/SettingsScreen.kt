@@ -164,7 +164,7 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
 
         status = StatusMsg(
 
-            "Screening role requested â€” enable Intercept in system settings if needed.",
+            "Screening role requested - enable Intercept in system settings if needed.",
 
             Tone.INFO,
 

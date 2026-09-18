@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Caller voice → on-device/Google STT mic input for live screening -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
@@ -67,6 +68,11 @@
                 <action android:name="android.telecom.InCallService" />
             </intent-filter>
         </service>
+
+        <!-- Floating bubble over any app (user-toggled quick actions). -->
+        <service
+            android:name=".overlay.OverlayService"
+            android:exported="false" />
 
         <!-- Headless auto-protect: screens calls + SMS with zero taps after setup. -->
         <service
