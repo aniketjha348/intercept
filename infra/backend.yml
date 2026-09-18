@@ -1,0 +1,140 @@
+# INTERCEPT infra 2/3 — backend: ECR repo + App Runner service (auto-deploy on push).
+#
+# Deploy once (ap-south-1 Mumbai recommended for Indian users):
+#   aws cloudformation deploy --stack-name intercept-backend --region ap-south-1 \
+#     --template-file infra/backend.yml --capabilities CAPABILITY_NAMED_IAM \
+#     --parameter-overrides DatabaseUrl="postgresql://..." GoogleApiKey="AIza..." \
+#       ApkUrl="https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk"
+#
+# Then: take ServiceUrl output → GitHub secret API_URL. Every push to main that
+# touches intercept-backend/** builds + pushes an image; App Runner redeploys it.
+# Secrets note: use --parameter-overrides from your shell history carefully —
+# prefer entering them in the App Runner console afterwards; values below ship
+# as NoEcho parameters and never appear in outputs.
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "INTERCEPT backend: ECR + App Runner with auto-deploy + /health gate"
+
+Parameters:
+  EcrRepoName:
+    Type: String
+    Default: intercept-backend
+  ServiceName:
+    Type: String
+    Default: intercept-backend
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: "Neon Postgres string (empty = memory mode, fine for first boot)"
+  GoogleApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: "Gemini key from Google AI Studio (empty = offline rules mode)"
+  OpenAiApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+  ApkUrl:
+    Type: String
+    Default: https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk
+    Description: "Feeds /app/latest for the website + in-app updater"
+  LlmProvider:
+    Type: String
+    Default: auto
+    AllowedValues: [auto, gemini, openai, "off"]
+  LlmModel:
+    Type: String
+    Default: gemini-2.5-flash-lite
+
+Resources:
+  EcrRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref EcrRepoName
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules":[{"rulePriority":1,"description":"keep last 10 images",
+          "selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},
+          "action":{"type":"expire"}}]}
+
+  # App Runner pulls private ECR through this access role.
+  EcrAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: InterceptAppRunnerEcrAccess
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: build.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: InterceptAppRunnerInstance
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: tasks.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      # No instance permissions needed today (no AWS API calls from the app).
+
+  AppRunnerService:
+    Type: AWS::AppRunner::Service
+    Properties:
+      ServiceName: !Ref ServiceName
+      SourceConfiguration:
+        AuthenticationConfiguration:
+          AccessRoleArn: !GetAtt EcrAccessRole.Arn
+        AutoDeploymentsEnabled: true
+        ImageRepository:
+          ImageIdentifier: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepoName}:latest"
+          ImageRepositoryType: ECR
+          ImageConfiguration:
+            Port: "8000"
+            RuntimeEnvironmentVariables:
+              - Name: DATABASE_URL
+                Value: !Ref DatabaseUrl
+              - Name: GOOGLE_API_KEY
+                Value: !Ref GoogleApiKey
+              - Name: OPENAI_API_KEY
+                Value: !Ref OpenAiApiKey
+              - Name: APK_URL
+                Value: !Ref ApkUrl
+              - Name: LLM_PROVIDER
+                Value: !Ref LlmProvider
+              - Name: LLM_MODEL
+                Value: !Ref LlmModel
+              - Name: ALLOW_NETWORK_FETCH
+                Value: "false"
+      HealthCheckConfiguration:
+        Protocol: HTTP
+        Path: /health
+        Interval: 10
+        Timeout: 5
+        HealthyThreshold: 1
+        UnhealthyThreshold: 5
+      InstanceConfiguration:
+        Cpu: 1024
+        Memory: 2048
+        InstanceRoleArn: !GetAtt InstanceRole.Arn
+      NetworkConfiguration:
+        EgressConfiguration:
+          EgressType: DEFAULT # public egress → Neon Postgres + Gemini reachable
+
+Outputs:
+  ServiceUrl:
+    Description: "Backend base URL → GitHub secret API_URL (no trailing slash)"
+    Value: !GetAtt AppRunnerService.ServiceUrl
+  EcrUri:
+    Description: "Image repo → GitHub secret ECR_REPO takes only the repo name"
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepoName}"

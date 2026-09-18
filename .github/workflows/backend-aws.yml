@@ -40,3 +40,29 @@ jobs:
           docker build -t "$REGISTRY/$ECR_REPO:$GITHUB_SHA" -t "$REGISTRY/$ECR_REPO:latest" intercept-backend
           docker push "$REGISTRY/$ECR_REPO:$GITHUB_SHA"
           docker push "$REGISTRY/$ECR_REPO:latest"
+
+  # App Runner picks up :latest automatically. This gate waits for the rollout
+  # and FAILS the workflow if the live API isn't healthy — red pipeline, no doubt.
+  # Skipped until API_URL is set (first-ever deploy has nothing to check yet).
+  smoke:
+    if: ${{ secrets.API_URL != '' }}
+    needs: push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for rollout + verify live API
+        env:
+          API_URL: ${{ secrets.API_URL }}
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS --max-time 10 "$API_URL/health" | grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'; then
+              echo "healthy after ~$((i * 20))s"
+              break
+            fi
+            if [ "$i" = 30 ]; then echo "SMOKE FAILED: $API_URL/health never ok"; exit 1; fi
+            sleep 20
+          done
+          curl -fsS --max-time 15 "$API_URL/app/latest" | grep -q version_code
+          SID=$(curl -fsS --max-time 15 -X POST "$API_URL/calls/start" \
+            -H "Content-Type: application/json" -d '{"caller":"ci-smoke"}' | grep -o '"session_id"[[:space:]]*:[[:space:]]*"[^"]*"')
+          [ -n "$SID" ] || { echo "SMOKE FAILED: /calls/start"; exit 1; }
+          echo "smoke OK: $SID"

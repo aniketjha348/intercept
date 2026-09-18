@@ -1,0 +1,92 @@
+# INTERCEPT infra 1/3 — GitHub OIDC deploy role (no long-lived AWS keys, ever).
+#
+# Deploy once (any region — IAM is global, run in your home region):
+#   aws cloudformation deploy --stack-name intercept-github-oidc \
+#     --template-file infra/github-oidc.yml --capabilities CAPABILITY_NAMED_IAM \
+#     --parameter-overrides GitHubRepo=aniketjha348/intercept WebsiteBucket=intercept-website
+#
+# Then: aws cloudformation describe-stacks --stack-name intercept-github-oidc \
+#         --query "Stacks[0].Outputs"  → put RoleArn in GitHub secret AWS_ROLE_ARN.
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "INTERCEPT: GitHub Actions OIDC provider + scoped deploy role"
+
+Parameters:
+  GitHubRepo:
+    Type: String
+    Default: aniketjha348/intercept
+    Description: "owner/repo that may assume the deploy role"
+  EcrRepo:
+    Type: String
+    Default: intercept-backend
+  WebsiteBucket:
+    Type: String
+    Default: intercept-website
+
+Resources:
+  GithubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+      # DigiCert root for token.actions.githubusercontent.com (GitHub-documented value)
+      ThumbprintList: [6938fd4d98bab03faadb97b34396831e3780aea1]
+
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: InterceptGitHubDeploy
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GithubOidcProvider
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubRepo}:*"
+      Policies:
+        - PolicyName: EcrPush
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:CompleteLayerUpload
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                  - ecr:BatchGetImage
+                  - ecr:DescribeImages
+                Resource: !Sub "arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/${EcrRepo}"
+        - PolicyName: WebsiteSync
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${WebsiteBucket}"
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${WebsiteBucket}/*"
+              - Effect: Allow
+                Action:
+                  - cloudfront:CreateInvalidation
+                  - cloudfront:GetInvalidation
+                Resource: "*"
+
+Outputs:
+  RoleArn:
+    Description: "Put this in GitHub secret AWS_ROLE_ARN"
+    Value: !GetAtt DeployRole.Arn

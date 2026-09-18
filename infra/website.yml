@@ -1,0 +1,106 @@
+# INTERCEPT infra 3/3 — website: private S3 + CloudFront (OAC, HTTPS).
+#
+# Deploy once (us-east-1 is cheapest for CloudFront-adjacent bookkeeping;
+# the CDN serves India from edge caches regardless):
+#   aws cloudformation deploy --stack-name intercept-website --region us-east-1 \
+#     --template-file infra/website.yml \
+#     --parameter-overrides BucketName=intercept-website
+#
+# Then: BucketName → secret WEBSITE_BUCKET, DistributionId → secret
+# CF_DISTRIBUTION_ID. Every push touching intercept-website/** syncs + invalidates.
+# NOTE: S3 bucket names are global — if the default is taken, pick another name
+# and use the SAME name in github-oidc.yml WebsiteBucket + redeploy stack 1/3.
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "INTERCEPT website: private S3 origin + CloudFront CDN"
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: intercept-website
+    Description: "Globally unique S3 bucket name for the static site"
+
+Resources:
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Suspended
+
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${BucketName}-oac"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  Cdn:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: INTERCEPT website
+        DefaultRootObject: index.html
+        PriceClass: PriceClass_100 # US/EU cheapest; upgrade to 200/All for Asia edge speed
+        Origins:
+          - Id: s3origin
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+            OriginAccessControlId: !Ref OriginAccessControl
+        DefaultCacheBehavior:
+          TargetOriginId: s3origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          CachedMethods: [GET, HEAD]
+          ForwardedValues:
+            QueryString: true # lets ?api= override reach site.js behavior
+            Cookies:
+              Forward: none
+          MinTTL: 0
+          DefaultTTL: 3600
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "arn:${AWS::Partition}:s3:::${BucketName}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Cdn}"
+
+Outputs:
+  BucketName:
+    Description: "→ GitHub secret WEBSITE_BUCKET"
+    Value: !Ref SiteBucket
+  DistributionId:
+    Description: "→ GitHub secret CF_DISTRIBUTION_ID"
+    Value: !Ref Cdn
+  CdnDomain:
+    Description: "Share this URL with users until a custom domain is added"
+    Value: !GetAtt Cdn.DomainName
