@@ -47,3 +47,22 @@ variable "desired_count" {
   type    = number
   default = 1
 }
+
+variable "whatsapp_token" {
+  type      = string
+  sensitive = true
+  default   = ""
+  description = "Meta Graph token for the bot number (empty = bot off)"
+}
+
+variable "whatsapp_phone_id" {
+  type      = string
+  default   = ""
+  description = "Meta phone-number ID for the bot number"
+}
+
+variable "whatsapp_verify" {
+  type    = string
+  default = "intercept-verify"
+  description = "Webhook verify string (must match Meta dashboard)"
+}

@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app import core_config as cfg
 from app.ai import llm
-from app.api import analyze, appcast, calls, users
+from app.api import analyze, appcast, calls, users, whatsapp
 from app.guards import guard
 from app.realtime import live_bridge, websocket
 
@@ -23,6 +23,7 @@ app.include_router(calls.router)
 app.include_router(analyze.router)
 app.include_router(appcast.router)
 app.include_router(users.router)
+app.include_router(whatsapp.router)
 app.include_router(websocket.router)
 app.include_router(live_bridge.router)
 

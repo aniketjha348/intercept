@@ -106,7 +106,7 @@ resource "aws_iam_role_policy" "exec_secrets" {
     Statement = [{
       Effect   = "Allow"
       Action   = ["secretsmanager:GetSecretValue"]
-      Resource = [aws_secretsmanager_secret.database_url.arn, aws_secretsmanager_secret.google_key.arn, aws_secretsmanager_secret.openai_key.arn]
+      Resource = [aws_secretsmanager_secret.database_url.arn, aws_secretsmanager_secret.google_key.arn, aws_secretsmanager_secret.openai_key.arn, aws_secretsmanager_secret.whatsapp_token.arn]
     }]
   })
 }

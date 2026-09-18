@@ -33,11 +33,23 @@ resource "aws_secretsmanager_secret_version" "openai_key" {
   secret_string = var.openai_key
 }
 
+resource "aws_secretsmanager_secret" "whatsapp_token" {
+  name                    = "${var.project}/WHATSAPP_TOKEN"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "whatsapp_token" {
+  count         = var.whatsapp_token != "" ? 1 : 0
+  secret_id     = aws_secretsmanager_secret.whatsapp_token.id
+  secret_string = var.whatsapp_token
+}
+
 locals {
   # Secrets exist as versions only when set — ECS can only inject those.
   app_secrets = concat(
     var.db_url != "" ? [{ name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn }] : [],
     var.google_key != "" ? [{ name = "GOOGLE_API_KEY", valueFrom = aws_secretsmanager_secret.google_key.arn }] : [],
     var.openai_key != "" ? [{ name = "OPENAI_API_KEY", valueFrom = aws_secretsmanager_secret.openai_key.arn }] : [],
+    var.whatsapp_token != "" ? [{ name = "WHATSAPP_TOKEN", valueFrom = aws_secretsmanager_secret.whatsapp_token.arn }] : [],
   )
 }

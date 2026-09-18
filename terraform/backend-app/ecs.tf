@@ -27,7 +27,9 @@ resource "aws_ecs_task_definition" "app" {
       { name = "APK_URL", value = var.apk_url },
       { name = "LLM_PROVIDER", value = var.llm_provider },
       { name = "LLM_MODEL", value = var.llm_model },
-      { name = "ALLOW_NETWORK_FETCH", value = "false" }
+      { name = "ALLOW_NETWORK_FETCH", value = "false" },
+      { name = "WHATSAPP_PHONE_ID", value = var.whatsapp_phone_id },
+      { name = "WHATSAPP_VERIFY", value = var.whatsapp_verify }
     ]
     secrets = local.app_secrets
     logConfiguration = {

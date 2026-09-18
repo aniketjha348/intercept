@@ -50,6 +50,56 @@ def test_persisted_text_scrubs_otp_like_digits():
     assert scrub_secrets("") == ""
 
 
+def test_whatsapp_verify_handshake(monkeypatch):
+    import app.core_config as cfg
+    from fastapi.testclient import TestClient
+    from app.main import app
+    monkeypatch.setattr(cfg, "WHATSAPP_VERIFY", "s3cr3t")
+    c = TestClient(app)
+    ok = c.get("/webhooks/whatsapp", params={"hub.mode": "subscribe",
+               "hub.verify_token": "s3cr3t", "hub.challenge": "CHAL"})
+    assert ok.status_code == 200 and ok.text == "CHAL"
+    bad = c.get("/webhooks/whatsapp", params={"hub.mode": "subscribe",
+                "hub.verify_token": "nope", "hub.challenge": "CHAL"})
+    assert bad.status_code == 403
+
+
+def test_whatsapp_off_without_env(monkeypatch):
+    import app.core_config as cfg
+    from fastapi.testclient import TestClient
+    from app.main import app
+    monkeypatch.setattr(cfg, "WHATSAPP_TOKEN", "")
+    monkeypatch.setattr(cfg, "WHATSAPP_PHONE_ID", "")
+    c = TestClient(app)
+    r = c.post("/webhooks/whatsapp", json={"entry": []})
+    assert r.status_code == 200 and r.json()["status"] == "off"
+
+
+def test_whatsapp_forwards_verdict(monkeypatch):
+    import app.api.whatsapp as wa
+    import app.core_config as cfg
+    from fastapi.testclient import TestClient
+    from app.main import app
+    monkeypatch.setattr(cfg, "WHATSAPP_TOKEN", "tok")
+    monkeypatch.setattr(cfg, "WHATSAPP_PHONE_ID", "123")
+    sent = []
+    monkeypatch.setattr(wa, "_send_text",
+                        lambda to, body: sent.append((to, body)) or True)
+    c = TestClient(app)
+    msgs = [
+        {"type": "text", "from": "919999999999",
+         "text": {"body": "SBI KYC blocked, share OTP now"}},
+        {"type": "text", "from": "918888888888",
+         "text": {"body": "Hi, lunch tomorrow?"}},
+    ]
+    payload = {"entry": [{"changes": [{"value": {"messages": msgs}}]}]}
+    r = c.post("/webhooks/whatsapp", json=payload)
+    assert r.status_code == 200 and r.json()["replied"] == 2, r.text
+    by_to = dict(sent)
+    assert "CRITICAL" in by_to["919999999999"] or "DANGER" in by_to["919999999999"]
+    assert "safe" in by_to["918888888888"].lower()
+
+
 def test_rate_limit_429(monkeypatch):
     monkeypatch.setattr(guards, "MAX_REQUESTS_PER_MINUTE", 2)
     guards._hits.clear()

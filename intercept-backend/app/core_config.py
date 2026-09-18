@@ -27,6 +27,10 @@ TTS_VOICE_EN = _env("TTS_VOICE_EN")
 # Realtime voice bridge model (probed: gemini-3.1-flash-live-preview).
 LIVE_MODEL = _env("LIVE_MODEL")
 GEMINI_LIVE_URL = _env("GEMINI_LIVE_URL")
+# WhatsApp bot number (forward-to-verify). Empty = endpoints report OFF.
+WHATSAPP_TOKEN = _env("WHATSAPP_TOKEN")
+WHATSAPP_PHONE_ID = _env("WHATSAPP_PHONE_ID")
+WHATSAPP_VERIFY = _env("WHATSAPP_VERIFY", "intercept-verify")
 ALLOW_NETWORK_FETCH = _env("ALLOW_NETWORK_FETCH", "false").lower() in ("1", "true", "yes")
 DATABASE_URL = _env("DATABASE_URL", "sqlite:///./intercept.db")
 APP_NAME = "INTERCEPT"
