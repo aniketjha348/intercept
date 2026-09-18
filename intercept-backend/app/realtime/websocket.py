@@ -48,12 +48,17 @@ async def call_socket(ws: WebSocket, session_id: str):
                 sess.last_result = result
                 sess.note_risk(result.risk_score)
                 sess.language = result.language
-                sess.transcript.append({"speaker": "intercept", "text": result.guardian_reply})
+                # Human has taken over: the AI monitors silently and says nothing.
+                # The REST turn path has always honoured this; without it here the
+                # guardian kept talking over the owner who just joined the call.
+                if not sess.human_mode:
+                    sess.transcript.append({"speaker": "intercept", "text": result.guardian_reply})
                 # Same persistence as the REST turn path: a call screened over
                 # the realtime socket must leave the same audit trail, or the
                 # report quietly differs depending on which transport won.
                 REPO.save_transcript(session_id, "caller", text)
-                REPO.save_transcript(session_id, "intercept", result.guardian_reply)
+                if not sess.human_mode:
+                    REPO.save_transcript(session_id, "intercept", result.guardian_reply)
                 REPO.add_events(session_id, [e.model_dump() for e in result.events])
                 REPO.touch_session_risk(session_id, result.risk_score, result.risk_level)
                 for s in result.signals:
@@ -64,9 +69,10 @@ async def call_socket(ws: WebSocket, session_id: str):
                                        risk=result.risk_score, level=result.risk_level))
                 await ws.send_json(_ev("ATTACK_STAGE_CHANGED", session_id,
                                        chain=[c.model_dump() for c in result.attack_chain]))
-                await ws.send_json(_ev("AI_RESPONSE_STARTED", session_id))
-                await ws.send_json(_ev("AI_RESPONSE_FINISHED", session_id,
-                                       text=result.guardian_reply))
+                if not sess.human_mode:
+                    await ws.send_json(_ev("AI_RESPONSE_STARTED", session_id))
+                    await ws.send_json(_ev("AI_RESPONSE_FINISHED", session_id,
+                                           text=result.guardian_reply))
                 await ws.send_json(_ev("TAKEOVER_AVAILABLE", session_id,
                                        offer=result.policy.offer_takeover,
                                        human_mode=sess.human_mode))

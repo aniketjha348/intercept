@@ -3,7 +3,7 @@
 > **Date:** 2026-09-19 · **Scope:** `intercept-backend` (~2.8k LOC), `intercept-android` (41 Kotlin files), `livekit-agent`
 > **Method:** full read of the request path (API → pipeline → risk/policy → persistence → realtime), the Android
 > call/message/audio services, and the app↔backend contract. Every finding below was read in the source, not inferred.
-> **Verification:** `pytest` 53 passed (18 new regression tests), `verify_contract.py` 0 failures, `agent.py` compiles.
+> **Verification:** `pytest` 63 passed (28 new regression tests), `verify_contract.py` 0 failures, `agent.py` compiles.
 
 ---
 
@@ -112,6 +112,53 @@ an image.
 - **`/calls/live` now answers "what do they want?"**: `objective`, `claimed_org`, `escalating` join the feed, so the
   Home "Live now" card shows intent and escalation *before* you tap into the call.
 - **Bounded session retention** (finding 3) — the reliability half of the same change.
+
+---
+
+## Round 2 — deeper sweep (same day)
+
+After the first pass I had still not read `whatsapp.py`, `rules.py`, `i18n.py`, the multimodal stubs, or
+`AnalyzeScreen`/`CallActiveActivity`. The second read found four more live bugs, all on the request path.
+
+### 12. The AI kept talking after the owner took over — HIGH
+`app/realtime/websocket.py`
+
+The REST turn path has always honoured `human_mode` ("human speaking → monitor silently, no guardian
+reply"). The socket path — the app's primary live route — never checked it, so tapping **Take over**
+left the guardian talking over the owner who had just joined the call. Now the reply, its transcript row
+and the `AI_RESPONSE_*` events are all suppressed while a human drives. Risk/signals/chain still flow, so
+monitoring is unaffected. *Test: a WebSocket session that takes over and asserts silence.*
+
+### 13. `www.` links were never extracted — HIGH
+`app/detection/signals.py`
+
+This is finding 1 at the *extraction* layer: `URL_RE` matched only `https?://`, so a message reading
+"verify at www.sbi-kyc.xyz/update" produced no URL signals at all. Fixing `analyze_url` alone was not
+enough — the engine never received the link. Bare domains are still deliberately not matched, because in
+prose `no.However` is shaped exactly like a hostname. *Tests: 4.*
+
+### 14. English was sometimes read as Hinglish — MEDIUM
+`app/i18n.py`
+
+`detect_language()` matched a word list containing `main`, `double`, `mat`, `sun` and `hum` — all ordinary
+English words. "Please check your main account" was classified as Hinglish, which changes the guardian's
+reply language, the policy wording and the TTS voice for an English speaker. Colliding words are gone;
+real roman-Hindi always carries a function word (`hai`/`ka`/`raha`/`kya`) from the remaining set.
+*Tests: 3.*
+
+**Note:** my own test caught that this fix was half-done — `"double"` survived on an earlier line of the
+same set, so "Double check the main door" still came back Hinglish. Worth knowing that the first attempt
+looked complete.
+
+### 15. The WhatsApp webhook accepted unverified payloads — MEDIUM (security)
+`app/api/whatsapp.py`
+
+Meta signs every webhook POST with the app secret, and nothing checked it. Anyone who learned the URL
+could post a payload and make **our business number** send messages to arbitrary numbers — a spam relay,
+and a WhatsApp policy violation. Now `X-Hub-Signature-256` is verified whenever `WHATSAPP_APP_SECRET` is
+set; when it is not, the response says the payload was unverified instead of failing silently (the
+documented activation flow predates the secret). Also: the bot kept **one** Scam DNA bucket for every
+WhatsApp user on earth — now keyed per sender. *Tests: 2.*
 
 ---
 

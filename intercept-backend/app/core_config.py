@@ -31,6 +31,10 @@ GEMINI_LIVE_URL = _env("GEMINI_LIVE_URL")
 WHATSAPP_TOKEN = _env("WHATSAPP_TOKEN")
 WHATSAPP_PHONE_ID = _env("WHATSAPP_PHONE_ID")
 WHATSAPP_VERIFY = _env("WHATSAPP_VERIFY", "intercept-verify")
+# Meta app secret, used to verify the X-Hub-Signature-256 on every webhook
+# POST. Without it anyone who learns the URL can make our business number send
+# messages; with it, forged payloads are rejected. Strongly recommended.
+WHATSAPP_APP_SECRET = _env("WHATSAPP_APP_SECRET")
 # LiveKit (hackathon voice agent): join tokens for web judges. Empty = 503.
 LIVEKIT_URL = _env("LIVEKIT_URL")
 LIVEKIT_KEY = _env("LIVEKIT_KEY")

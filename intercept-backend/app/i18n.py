@@ -21,14 +21,19 @@ _HINGLISH = {
     "giraftar", "giraftar", "kanooni", "karwai", "karvai",
     "inaam", "badhai", "dhokha", "dhokhadhadi", "farzi", "farziwada",
     "dhamki", "lut", "lutega", "fas", "fasega", "atka", "jama",
-    "dugna", "double", "ghar", "baithe", "karo", "karna", "chahiye",
+    "dugna", "ghar", "baithe", "karo", "karna", "chahiye",
     "sarkari", "daftar", "shakha", "bharosa",
-    # Everyday roman-Hindi function words (never English standalone words).
-    "main", "mein", "hoon", "hun", "hai", "hain",
+    # Everyday roman-Hindi function words. Anything that is ALSO a plain English
+    # word is deliberately absent: "main" ("check your main account"), "mat",
+    # "double", "sun" and "hum" used to make ordinary English read as Hinglish,
+    # which flipped the reply language, the policy text and the TTS voice. Real
+    # roman-Hindi always carries a function word from this set (hai/ka/raha/kya),
+    # so nothing is lost by leaving the colliding ones out.
+    "mein", "hoon", "hun", "hai", "hain",
     "raha", "rahe", "rahi", "raho", "kya", "nahi", "nahin",
-    "mera", "meri", "tum", "tumhara", "aap", "hum",
-    "ko", "ka", "ki", "ke", "bol", "bolo", "sun", "suno",
-    "wala", "wale", "wali", "karke", "kar", "mat",
+    "mera", "meri", "tum", "tumhara", "aap",
+    "ko", "ka", "ki", "ke", "bol", "bolo", "suno",
+    "wala", "wale", "wali", "karke", "kar",
 }
 
 

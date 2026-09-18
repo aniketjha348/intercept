@@ -22,10 +22,14 @@ TAXONOMY: dict[str, tuple[str, int, list[str]]] = {
     "CREDENTIAL_REQUEST": ("ACTION", 35, [r"\bpassword\b", r"\bcvv\b", r"\bpin\b", r"card number", r"expiry", r"login.*credential", r"netbanking"]),
     "PAYMENT_REQUEST": ("ACTION", 30, [r"\bupi\b", r"\bpay\b.*\bnow\b", r"transfer.*money", r"send.*money", r"qr.*scan", r"advance.*payment", r"processing fee"]),
     "REMOTE_ACCESS": ("ACTION", 40, [r"anydesk", r"teamviewer", r"quicksupport", r"screen shar", r"remote access", r"install.*app", r"download.*apk"]),
-    "LINK_CLICK": ("ACTION", 20, [r"click.*link", r"open.*link", r"verify.*link", r"https?://", r"bit\.ly", r"tinyurl"]),
+    "LINK_CLICK": ("ACTION", 20, [r"click.*link", r"open.*link", r"verify.*link", r"https?://", r"www\.", r"bit\.ly", r"tinyurl"]),
 }
 
-URL_RE = re.compile(r"https?://[^\s)\"'<>]+", re.IGNORECASE)
+# Scheme-less "www." links are how most scam links actually arrive in an SMS or
+# chat, so the extractor must see them: matching only https?:// meant the URL
+# engine never ran on them. Bare domains without "www." are left alone on
+# purpose — in prose, "no.However" looks exactly like a hostname.
+URL_RE = re.compile(r"(?:https?://|www\.)[^\s)\"'<>]+", re.IGNORECASE)
 UPI_RE = re.compile(r"upi://[^\s)\"'<>]+", re.IGNORECASE)
 
 _COMPILED: dict[str, list[re.Pattern]] = {
