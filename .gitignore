@@ -1,5 +1,6 @@
 # Secrets — never commit
 .env
+.env.local
 *.key.json
 
 # Local agent/AI scratch — personal tools, never part of the product
