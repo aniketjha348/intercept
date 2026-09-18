@@ -455,6 +455,25 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
                 }
             }
 
+            if (OverlayService.isMiui()) {
+                Text(
+                    "Xiaomi needs one more switch: Security app → Permissions → allow pop-up windows for Intercept AI.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Muted,
+                )
+                OutlinedButton(
+                    onClick = {
+                        if (!OverlayService.openMiuiPermEditor(ctx)) {
+                            status = StatusMsg(
+                                "Could not open the Xiaomi editor — find it in the Security app manually.",
+                                Tone.WARN,
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Open Xiaomi permission editor") }
+            }
+
 
 
             Spacer(Modifier.height(28.dp))

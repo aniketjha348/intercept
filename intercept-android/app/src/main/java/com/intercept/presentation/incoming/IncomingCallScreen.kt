@@ -36,6 +36,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import android.telephony.TelephonyManager
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import com.intercept.di.AppContainer
 import com.intercept.presentation.components.StatusDot
@@ -61,12 +64,23 @@ import kotlinx.coroutines.launch
 @Composable
 fun IncomingCallScreen(nav: NavController, container: AppContainer) {
     val caller = container.pendingIncomingCaller ?: "Unknown caller"
+    val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     // Auto-protect already screening this caller? Join it — no duplicate session.
     val liveSid = AutoScreenService.activeCallSession
         .takeIf { it != null && AutoScreenService.activeCallNumber == caller }
+    // A REAL cellular call ringing right now (seen via telephony state even
+    // when we are not the dialer and our InCallService never fires).
+    val ringingNow = remember {
+        try {
+            ctx.getSystemService(TelephonyManager::class.java)?.callState ==
+                TelephonyManager.CALL_STATE_RINGING
+        } catch (_: Exception) {
+            false
+        }
+    }
 
     InterceptTheme(room = true) {
         Scaffold(
@@ -148,11 +162,16 @@ fun IncomingCallScreen(nav: NavController, container: AppContainer) {
                         }
                         busy = true
                         error = null
-                        // Production: pick up the real telecom call (no-op for demo/simulated).
-                        try {
+                        // Try to pick up the real telecom call. False = we are not
+                        // the default dialer: the phone keeps ringing in the system
+                        // dialer, so the user answers on speaker and AI screens
+                        // through the mic (flagged below — never faked as answered).
+                        val answered = try {
                             InterceptInCallService.answer()
                         } catch (_: Exception) {
+                            false
                         }
+                        container.pendingRealRinging = ringingNow && !answered
                         scope.launch {
                             try {
                                 val sid = container.repo.startCall(caller)

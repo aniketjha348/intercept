@@ -191,6 +191,9 @@ class LiveCallViewModel(
         _state.update { it.copy(realCall = true) }
     }
 
+    private var micReady = false
+    private var micWatch: Job? = null
+
     /** Caller ears on: every recognized sentence streams to the backend. */
     fun startListening() {
         if (_state.value.listening || _state.value.ended) return
@@ -204,6 +207,7 @@ class LiveCallViewModel(
             return
         }
         stt = active
+        micReady = false
         _state.update { it.copy(listening = true, error = null) }
         active.start(
             onPartialText = { part -> _state.update { it.copy(interim = part) } },
@@ -215,11 +219,39 @@ class LiveCallViewModel(
                 _state.update {
                     it.copy(listening = false, error = "Mic stopped (no speech service) — type instead or retry.")
                 }
+            },
+            // Proven live only: the mic icon turns on the moment the speech
+            // service answers, never on blind hope. Silence breeds distrust.
+            onReady = {
+                micReady = true
+                try {
+                    micWatch?.cancel()
+                } catch (_: Exception) {
+                }
+                _state.update { it.copy(error = null) }
             }
         )
+        try {
+            micWatch?.cancel()
+        } catch (_: Exception) {
+        }
+        micWatch = viewModelScope.launch {
+            kotlinx.coroutines.delay(8000)
+            if (!micReady && _state.value.listening && stt != null) {
+                stopListening()
+                _state.update {
+                    it.copy(error = "Mic not responding — check connection, then tap mic to retry.")
+                }
+            }
+        }
     }
 
     fun stopListening() {
+        try {
+            micWatch?.cancel()
+        } catch (_: Exception) {
+        }
+        micWatch = null
         try {
             stt?.stop()
         } catch (_: Exception) {

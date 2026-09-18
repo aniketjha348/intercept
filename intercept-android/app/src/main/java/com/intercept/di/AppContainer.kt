@@ -97,6 +97,13 @@ class AppContainer(context: Context) {
     var pendingSharedText: String? = null
 
     /**
+     * True when the user started screening a REAL ringing call we could not pick
+     * up ourselves (not default dialer): they answer on speaker, AI listens
+     * through the mic. Consumed once by the Live screen.
+     */
+    var pendingRealRinging: Boolean = false
+
+    /**
      * Zero-friction sign-in: one random device id, server derives the stable
      * opaque user id (no name/phone/password anywhere). Until the server
      * confirms, a stable temp id keeps this user's Scam DNA consistent.

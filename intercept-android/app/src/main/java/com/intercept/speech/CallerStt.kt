@@ -22,6 +22,8 @@ class CallerStt(context: Context, private val appLang: () -> String = { "auto" }
     private var onFinal: ((String) -> Unit)? = null
     private var onPartial: ((String) -> Unit)? = null
     private var onStopped: (() -> Unit)? = null
+    private var onReady: (() -> Unit)? = null
+    private var readyFired = false
     private var errors = 0 // consecutive failures → back off instead of hot-looping
 
     fun isAvailable(): Boolean =
@@ -45,12 +47,15 @@ class CallerStt(context: Context, private val appLang: () -> String = { "auto" }
         onPartialText: (String) -> Unit = {},
         onFinalText: (String) -> Unit,
         onStopped: () -> Unit = {},
+        onReady: () -> Unit = {},
     ) {
         if (listening) return
         if (!isAvailable()) return
         onFinal = onFinalText
         onPartial = onPartialText
         this.onStopped = onStopped
+        this.onReady = onReady
+        readyFired = false
         errors = 0
         listening = true
         begin()
@@ -120,7 +125,16 @@ class CallerStt(context: Context, private val appLang: () -> String = { "auto" }
                 }
             }
 
-            override fun onReadyForSpeech(params: Bundle) = Unit
+            override fun onReadyForSpeech(params: Bundle) {
+                // The mic pipeline is genuinely alive (not just "started").
+                if (!readyFired) {
+                    readyFired = true
+                    try {
+                        onReady?.invoke()
+                    } catch (_: Exception) {
+                    }
+                }
+            }
             override fun onBeginningOfSpeech() = Unit
             override fun onRmsChanged(rmsdB: Float) = Unit
             override fun onBufferReceived(buffer: ByteArray) = Unit

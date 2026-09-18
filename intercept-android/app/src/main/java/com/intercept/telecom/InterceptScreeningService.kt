@@ -43,12 +43,11 @@ class InterceptScreeningService : CallScreeningService() {
         }
 
         if (shouldAutoAnswer) {
-            // Allow the call and let InterceptInCallService handle auto-answer
-            // This is the headless auto-answer path
+            // Allow the call and let InterceptInCallService handle auto-answer.
+            // (No allow-flag exists: a response WITHOUT disallow/reject IS allow.)
             val response = CallResponse.Builder()
                 .setSkipCallLog(false)
                 .setSkipNotification(false)
-                .setAllowCall(true)  // Explicitly allow the call through
                 .build()
             respondToCall(callDetails, response)
             // InterceptInCallService will detect this call and handle auto-answer

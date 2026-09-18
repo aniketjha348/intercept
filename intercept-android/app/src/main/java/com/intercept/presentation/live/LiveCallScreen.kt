@@ -56,6 +56,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.intercept.data.DemoScript
 import com.intercept.di.AppContainer
 import com.intercept.domain.model.ChatLine
 import com.intercept.presentation.components.RiskMeter
@@ -68,6 +69,7 @@ import com.intercept.presentation.theme.RiskCritical
 import com.intercept.presentation.theme.RiskCriticalOnRoom
 import com.intercept.presentation.theme.RiskLow
 import com.intercept.presentation.theme.RiskLowOnRoom
+import com.intercept.presentation.theme.RiskSuspiciousOnRoom
 import com.intercept.presentation.theme.Room
 import com.intercept.presentation.theme.RoomInk
 import com.intercept.presentation.theme.RoomMuted
@@ -122,6 +124,12 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
         if (ok) vm.startListening() else micLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
+    // Speaker path: user answered a real call on speaker (we are not the
+    // dialer). Consumed once — AI listens through the mic from here.
+    val speakerPath = remember {
+        container.pendingRealRinging.also { container.pendingRealRinging = false }
+    }
+
     LaunchedEffect(sid) {
         vm.connect()
         // Service already driving this session? Just watch — no second mic/TTS.
@@ -129,6 +137,8 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
         // Real telecom call up? Route audio + start ears automatically.
         if (InterceptInCallService.hasCall()) {
             vm.beginRealScreening()
+            ensureMicThenListen()
+        } else if (speakerPath) {
             ensureMicThenListen()
         }
     }
@@ -161,6 +171,12 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
             Column(Modifier.fillMaxSize().padding(pad).padding(horizontal = 16.dp)) {
                 if (s.realCall) {
                     StatusLine("Real call on speaker — AI is screening live", RoomMuted)
+                }
+                if (speakerPath && !s.realCall) {
+                    StatusLine(
+                        "You answered on speaker — AI hears through your mic",
+                        RiskSuspiciousOnRoom,
+                    )
                 }
                 if (s.voiceLive) {
                     StatusLine("Live voice — talking in real time", RiskCriticalOnRoom)
@@ -335,9 +351,10 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        // Scripted demo stays out of real screenings: fake turns would
-                        // pollute a genuine call's report (and the caller's ears).
-                        if (!s.realCall && AutoScreenService.activeCallSession != sid) {
+                        // Demo exists in exactly one place: the simulated scam call
+                        // from Home. A real caller is never DemoScript's number, so
+                        // fake turns can never pollute a genuine call again.
+                        if (caller == DemoScript.callerNumber) {
                             OutlinedButton(onClick = { vm.playDemo() }, modifier = Modifier.weight(1f)) {
                                 Icon(Icons.Filled.PlayArrow, contentDescription = null)
                                 Text("Demo")

@@ -28,6 +28,34 @@ import com.intercept.appContainer
 class OverlayService : Service() {
 
     companion object {
+        /**
+         * MIUI runs a SECOND, undocumented gate ("Display pop-up windows while
+         * running in the background", default OFF) that canDrawOverlays()
+         * cannot see. Detect MIUI and send the user to its Security editor.
+         */
+        fun isMiui(): Boolean = try {
+            val cl = Class.forName("android.os.SystemProperties")
+            val m = cl.getMethod("get", String::class.java)
+            ((m.invoke(null, "ro.miui.ui.version.name") as? String)?.isNotBlank()) == true
+        } catch (_: Exception) {
+            val maker = android.os.Build.MANUFACTURER ?: ""
+            maker.equals("Xiaomi", true) || maker.equals("Redmi", true) ||
+                maker.equals("POCO", true)
+        }
+
+        fun openMiuiPermEditor(context: Context): Boolean = try {
+            val intent = android.content.Intent("miui.intent.action.APP_PERM_EDITOR")
+                .setClassName(
+                    "com.miui.securitycenter",
+                    "com.miui.permcenter.permissions.PermissionsEditorActivity",
+                )
+                .putExtra("extra_pkgname", context.packageName)
+            context.startActivity(intent)
+            true
+        } catch (_: Exception) {
+            false
+        }
+
         fun start(context: Context) {
             if (!Settings.canDrawOverlays(context)) return
             try {
@@ -148,6 +176,21 @@ class OverlayService : Service() {
             wm.addView(icon, params)
             bubble = icon
         } catch (_: Exception) {
+            // Silent death is why users say "it doesn't work": say it out loud,
+            // point at the fix, and uncheck the toggle so state stays honest.
+            try {
+                android.widget.Toast.makeText(
+                    this,
+                    if (isMiui()) "Bubble blocked: open Security app → Permissions → allow pop-up windows for Intercept AI"
+                    else "Bubble blocked: allow Display over other apps in Settings",
+                    android.widget.Toast.LENGTH_LONG,
+                ).show()
+            } catch (_: Exception) {
+            }
+            try {
+                applicationContext.appContainer().overlayOn = false
+            } catch (_: Exception) {
+            }
             stopSelf()
         }
     }

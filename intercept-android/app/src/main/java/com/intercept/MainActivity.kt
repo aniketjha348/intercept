@@ -51,6 +51,16 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestCallPermissions()
+        // Process death kills the bubble but keeps the toggle: heal the gap.
+        try {
+            val container = appContainer()
+            if (container.overlayOn &&
+                android.provider.Settings.canDrawOverlays(this)
+            ) {
+                com.intercept.overlay.OverlayService.start(this)
+            }
+        } catch (_: Exception) {
+        }
 
         // Check if this is an auto-screened call (headless path)
         val caller = try {
