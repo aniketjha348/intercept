@@ -65,13 +65,23 @@ jobs:
   # isn't healthy — red pipeline, no doubt.
   # Skipped until API_URL is set (first-ever deploy has nothing to check yet).
   smoke:
-    if: ${{ secrets.API_URL != '' }}
     needs: [push, redeploy]
     runs-on: ubuntu-latest
+    env:
+      API_URL: ${{ secrets.API_URL }}
     steps:
+      # NOTE: `secrets.*` is not allowed in job-level `if` — gate lives here instead.
+      - name: Precheck (skip cleanly before the first-ever deploy)
+        id: pre
+        run: |
+          if [ -z "$API_URL" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "API_URL secret not set yet — nothing live to verify, skipping."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Wait for rollout + verify live API
-        env:
-          API_URL: ${{ secrets.API_URL }}
+        if: steps.pre.outputs.run == 'true'
         run: |
           for i in $(seq 1 30); do
             if curl -fsS --max-time 10 "$API_URL/health" | grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'; then
