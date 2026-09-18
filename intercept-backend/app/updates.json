@@ -246,5 +246,23 @@
       "Is version me taze fixes aur sudhaar",
       "App kholte hi update mil jayega"
     ]
+  },
+  {
+    "version_code": 19,
+    "version_name": "0.6.0",
+    "date": "2026-09-18",
+    "force": false,
+    "notes_en": [
+      "Audit round 3 (UI): validate backend URL, truthful setup gates, fail-closed risk levels",
+      "Fix four more bugs found in a second sweep: takeover silence, www-link extraction, language detection, webhook verificat",
+      "v0.5.3: deep audit fixes — link engine, report privacy, session eviction, live-room tokens, call handling",
+      "v0.5.2: one ongoing notification shared by the daemon and call screening",
+      "docs: real-device checklist for message blocking, threat banner and always-on",
+      "v0.5.2: always-on daemon, risky-message auto-dismiss, threat banner, link-first scan"
+    ],
+    "notes_hi": [
+      "Is version me taze fixes aur sudhaar",
+      "App kholte hi update mil jayega"
+    ]
   }
 ]
