@@ -94,10 +94,12 @@ jobs:
           echo "changed=$CHANGED" >> "$GITHUB_OUTPUT"
 
       - name: Commit + push feed update
+        id: feedpush
         if: steps.meta.outputs.changed == 'true'
-        # GITHUB_TOKEN pushes do NOT trigger other workflows (GitHub blocks the
-        # chain to prevent loops) — so deploys would never fire. RELEASE_TOKEN
-        # (fine-grained PAT, Contents:write on this repo) restores the chain.
+        # Bot pushes don't reliably trigger downstream workflows, so this job
+        # fires the deploys itself (both have workflow_dispatch). RELEASE_TOKEN
+        # = fine-grained PAT (Contents:write); falls back to GITHUB_TOKEN push
+        # + loud warning when absent.
         env:
           RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
@@ -108,6 +110,21 @@ jobs:
           if [ -n "$RELEASE_TOKEN" ]; then
             git remote set-url origin "https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           else
-            echo "RELEASE_TOKEN empty — pushing with GITHUB_TOKEN (deploys will NOT trigger; run them manually)"
+            echo "::warning::RELEASE_TOKEN empty — deploys will NOT trigger; run Backend/Website workflows manually"
           fi
           git push origin HEAD:main
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Fire backend + website deploys
+        if: steps.feedpush.outputs.pushed == 'true' && env.RELEASE_TOKEN != ''
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          for wf in backend-aws.yml website-aws.yml; do
+            curl -fsS -X POST \
+              -H "Authorization: Bearer $RELEASE_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$REPO/actions/workflows/$wf/dispatches" \
+              -d '{"ref":"main"}' && echo "dispatched $wf"
+          done
