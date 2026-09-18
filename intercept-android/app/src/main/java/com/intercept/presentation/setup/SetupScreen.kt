@@ -30,6 +30,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -88,6 +89,7 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
     var autoCalls by remember { mutableStateOf(container.autoCalls) }
     var autoSms by remember { mutableStateOf(container.autoSms) }
     var autoApps by remember { mutableStateOf(container.autoApps) }
+    var ownerName by remember { mutableStateOf(container.ownerName) }
     var backend by remember { mutableStateOf<Gate?>(null) }
     var testingBackend by remember { mutableStateOf(false) }
 
@@ -409,6 +411,16 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                     autoApps = it; container.autoApps = it; tick++
                 }
             }
+
+            Spacer(Modifier.height(16.dp))
+            TextField(
+                value = ownerName,
+                onValueChange = { ownerName = it; container.ownerName = it },
+                label = { Text("Your first name (optional)") },
+                placeholder = { Text("So the guardian talks like family") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
 
             Spacer(Modifier.height(24.dp))
             Button(

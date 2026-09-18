@@ -7,7 +7,7 @@ import com.intercept.domain.model.UpdateInfo
 
 /** Single front door to INTERCEPT core — every channel flows through here. */
 interface InterceptRepository {
-    suspend fun startCall(caller: String): String
+    suspend fun startCall(caller: String, owner: String = ""): String
     suspend fun sendCallerTurn(sessionId: String, text: String): TurnResult
     suspend fun takeover(sessionId: String)
     suspend fun endCall(sessionId: String): SecurityReport

@@ -12,7 +12,8 @@ SUPPORTED = ("hi", "hinglish", "en")
 
 _DEVA = re.compile(r"[\u0900-\u097F]")
 
-# Roman-script Hindi markers (kept free of common English words).
+# Roman-script Hindi markers (kept free of common English words — "me",
+# "band", "hi" and bare "ho"/"na"/"se" deliberately excluded: they collide).
 _HINGLISH = {
     "turant", "turunt", "jaldi", "fauran", "foran", "abhi",
     "batao", "batayein", "bataiye", "bhejo", "bhejein", "bhej",
@@ -22,6 +23,12 @@ _HINGLISH = {
     "dhamki", "lut", "lutega", "fas", "fasega", "atka", "jama",
     "dugna", "double", "ghar", "baithe", "karo", "karna", "chahiye",
     "sarkari", "daftar", "shakha", "bharosa",
+    # Everyday roman-Hindi function words (never English standalone words).
+    "main", "mein", "hoon", "hun", "hai", "hain",
+    "raha", "rahe", "rahi", "raho", "kya", "nahi", "nahin",
+    "mera", "meri", "tum", "tumhara", "aap", "hum",
+    "ko", "ka", "ki", "ke", "bol", "bolo", "sun", "suno",
+    "wala", "wale", "wali", "karke", "kar", "mat",
 }
 
 

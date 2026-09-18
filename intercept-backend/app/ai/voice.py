@@ -37,8 +37,10 @@ _VOICES = {
 
 _STYLE = {
     "hi": "Say in a calm, warm, natural Hindi voice, like a real family member on a phone call — unhurried, human, never robotic: ",
-    "hinglish": "Say in a calm, warm, natural Hinglish voice, like a real person on a phone call — unhurried, human, never robotic: ",
-    "en": "Say in a calm, warm, natural voice, like a real person on a phone call — unhurried, human, never robotic: ",
+    "hinglish": ("Say in a natural Hinglish accent, like an educated Mumbai youngster on a "
+                 "phone call — Hindi base with fluent English words, urban Indian cadence, "
+                 "unhurried, human, never robotic: "),
+    "en": "Say in a calm, warm, natural Indian English voice, like a real person on a phone call — unhurried, human, never robotic: ",
 }
 
 _CACHE: dict[tuple[str, str, str], str] = {}

@@ -148,6 +148,7 @@ async def _watch_risk(ws: WebSocket, session_id: str, text: str) -> bool:
             content=Content(text=text)), memory=sess.memory,
             user_memory=sess.scam_memory, language=sess.language)
         sess.last_result = res
+        sess.language = res.language
         sess.transcript.append({"speaker": "caller", "text": text})
         await ws.send_json(_ev("RISK_UPDATED", session_id,
                                risk=res.risk_score, level=res.risk_level))

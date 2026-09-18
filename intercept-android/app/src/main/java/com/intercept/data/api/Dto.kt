@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
  *  REST turn responses and human-mode monitor responses. */
 
 @Serializable
-data class StartCallRequest(val caller: String, @SerialName("session_id") val sessionId: String? = null, val language: String = "auto")
+data class StartCallRequest(val caller: String, @SerialName("session_id") val sessionId: String? = null, val language: String = "auto", @SerialName("owner_name") val ownerName: String = "")
 
 @Serializable
 data class StartCallResponse(
