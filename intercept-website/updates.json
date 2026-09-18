@@ -230,5 +230,21 @@
       "Is version me taze fixes aur sudhaar",
       "App kholte hi update mil jayega"
     ]
+  },
+  {
+    "version_code": 15,
+    "version_name": "0.4.8",
+    "date": "2026-09-18",
+    "force": false,
+    "apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk",
+    "notes_en": [
+      "v0.4.8: LiveKit studio transport in app (join+mic+agent audio)",
+      "v0.4.7: tel-scheme DIAL filter (AOSP list requirement) — dialer gate fix",
+      "Release v0.4.6: changelog feeds (auto)"
+    ],
+    "notes_hi": [
+      "Is version me taze fixes aur sudhaar",
+      "App kholte hi update mil jayega"
+    ]
   }
 ]
