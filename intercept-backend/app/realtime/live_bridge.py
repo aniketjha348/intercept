@@ -37,7 +37,11 @@ router = APIRouter()
 LIVE_URL = (cfg.GEMINI_LIVE_URL or
     "wss://generativelanguage.googleapis.com/ws/"
     "google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent")
-LIVE_MODEL = cfg.LIVE_MODEL or "gemini-3.1-flash-live-preview"
+# Probed 2026-09-18 on our key: 3.1-live-preview OK, 2.5-native-audio OK,
+# 3/3.8-live-preview IDs do not exist. First setupComplete wins.
+LIVE_MODELS = [cfg.LIVE_MODEL or "gemini-3.1-flash-live-preview",
+               "gemini-2.5-flash-native-audio-preview-12-2025"]
+LIVE_MODELS = list(dict.fromkeys(m for m in LIVE_MODELS if m))
 
 GUARDIAN_VOICE_SYSTEM = (
     "You are INTERCEPT, screening a possibly malicious phone call. "
@@ -48,16 +52,42 @@ GUARDIAN_VOICE_SYSTEM = (
 )
 
 
-def build_setup() -> dict:
+def build_setup(model: str | None = None) -> dict:
     return {
         "setup": {
-            "model": f"models/{LIVE_MODEL}",
+            "model": f"models/{model or LIVE_MODELS[0]}",
             "generationConfig": {"responseModalities": ["AUDIO"]},
             "systemInstruction": {"parts": [{"text": GUARDIAN_VOICE_SYSTEM}]},
             "inputAudioTranscription": {},
             "outputAudioTranscription": {},
         }
     }
+
+
+async def open_live_session() -> tuple | None:
+    """Connect + handshake, trying each model in order. (conn, model) or None."""
+    import websockets
+
+    for model in LIVE_MODELS:
+        try:
+            gem = await asyncio.wait_for(
+                websockets.connect(LIVE_URL + "?key=" + cfg.GOOGLE_API_KEY,
+                                   max_size=8 * 1024 * 1024),
+                timeout=20)
+            try:
+                await gem.send(json.dumps(build_setup(model)))
+                raw = _text(await asyncio.wait_for(gem.recv(), timeout=20))
+                if "setupComplete" in raw:
+                    return gem, model
+            except Exception:
+                pass
+            try:
+                await gem.close()
+            except Exception:
+                pass
+        except Exception:
+            continue
+    return None
 
 
 def build_audio_chunk(pcm_b64: str) -> dict:
@@ -141,28 +171,12 @@ async def live_socket(ws: WebSocket, session_id: str):
     sess = MANAGER.get(session_id)
     if sess is None:
         sess = MANAGER.create(session_id, "unknown")
-    import websockets
 
-    try:
-        gem = await asyncio.wait_for(
-            websockets.connect(LIVE_URL + "?key=" + cfg.GOOGLE_API_KEY,
-                               max_size=8 * 1024 * 1024),
-            timeout=20)
-    except Exception:
+    opened = await open_live_session()
+    if opened is None:
         await ws.close(code=1011)
         return
-    try:
-        await gem.send(json.dumps(build_setup()))
-        raw = _text(await asyncio.wait_for(gem.recv(), timeout=20))
-        if "setupComplete" not in raw:
-            raise RuntimeError("live setup rejected")
-    except Exception:
-        try:
-            await gem.close()
-        except Exception:
-            pass
-        await ws.close(code=1011)
-        return
+    gem, _live_model = opened
 
     await ws.send_json(_ev("VOICE_STARTED", session_id, caller=sess.caller))
     stop = asyncio.Event()
