@@ -246,5 +246,21 @@
       "Is version me taze fixes aur sudhaar",
       "App kholte hi update mil jayega"
     ]
+  },
+  {
+    "version_code": 16,
+    "version_name": "0.5.0",
+    "date": "2026-09-18",
+    "force": false,
+    "apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk",
+    "notes_en": [
+      "v0.5.0: owner persona, per-turn language+accent, Equal watch-mode",
+      "v0.4.8: LiveKit studio transport in app (join+mic+agent audio)",
+      "Release v0.4.7: changelog feeds (auto)"
+    ],
+    "notes_hi": [
+      "Is version me taze fixes aur sudhaar",
+      "App kholte hi update mil jayega"
+    ]
   }
 ]
