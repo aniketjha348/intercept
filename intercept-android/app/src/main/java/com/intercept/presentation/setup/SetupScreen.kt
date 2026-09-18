@@ -68,6 +68,8 @@ private val NEEDED = listOf(
     Manifest.permission.READ_PHONE_STATE,
     Manifest.permission.READ_CONTACTS,
     Manifest.permission.RECEIVE_SMS,
+    Manifest.permission.CALL_PHONE,
+    Manifest.permission.READ_CALL_LOG,
 )
 
 private enum class Gate { READY, TODO, NA }
@@ -145,6 +147,28 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
         } catch (_: Exception) {
             Gate.NA
         }
+    }
+
+    /**
+     * Dialer readiness from EITHER source of truth. RoleManager is canonical,
+     * but MIUI's own default-dialer setting can hold us while RoleManager lags
+     * behind — and it is the Telecom setting that actually delivers calls.
+     */
+    fun dialerGate(): Gate {
+        if (roleGate(RoleManager.ROLE_DIALER) == Gate.NA) return Gate.NA
+        if (roleGate(RoleManager.ROLE_DIALER) == Gate.READY) return Gate.READY
+        return try {
+            val def = ctx.getSystemService(TelecomManager::class.java)?.defaultDialerPackage
+            if (def == ctx.packageName) Gate.READY else Gate.TODO
+        } catch (_: Exception) {
+            Gate.TODO
+        }
+    }
+
+    fun dialerLabel(): String = try {
+        ctx.getSystemService(TelecomManager::class.java)?.defaultDialerPackage ?: "unknown"
+    } catch (_: Exception) {
+        "unknown"
     }
 
     fun testBackend() {
@@ -243,7 +267,7 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
         "Backend reachable" to (backend ?: Gate.TODO),
         "Permissions (mic, phone, SMS, contacts)" to permsGate(),
         "Call-screening role" to roleGate(RoleManager.ROLE_CALL_SCREENING),
-        "Default Phone app" to roleGate(RoleManager.ROLE_DIALER),
+        "Default Phone app" to dialerGate(),
         "Battery unrestricted" to batteryGate(),
         "Notification access" to notifGate(),
     )
@@ -294,7 +318,7 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                 }
             }
 
-            GateRow("Permissions (mic, phone, SMS, contacts)", gates[1].second, "Mic hears callers, phone answers, SMS/Contacts know strangers.") {
+            GateRow("Permissions (mic, phone, SMS, contacts, calls)", gates[1].second, "Mic hears callers, phone answers, SMS/Contacts know strangers, call access proves dialer identity.") {
                 if (!container.permAsked) {
                     OutlinedButton(
                         onClick = { permLauncher.launch(neededPerms().toTypedArray()) },
@@ -315,14 +339,9 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                 ) { Text("Enable screening") }
             }
 
-            GateRow("Default Phone app", gates[3].second, "Lets Intercept auto-answer strangers.") {
+            GateRow("Default Phone app", gates[3].second, "Lets Intercept auto-answer strangers. Xiaomi hand path: Settings → Apps → Manage apps → menu → Default apps → Dial → Intercept AI.") {
                 Text(
-                    "Phone app right now: " + try {
-                        ctx.getSystemService(TelecomManager::class.java)?.defaultDialerPackage
-                            ?: "unknown"
-                    } catch (_: Exception) {
-                        "unknown"
-                    },
+                    "Phone app right now: " + dialerLabel(),
                     style = MaterialTheme.typography.bodySmall, color = Muted
                 )
                 Spacer(Modifier.height(8.dp))

@@ -31,6 +31,8 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.RECEIVE_SMS,
+            Manifest.permission.CALL_PHONE,
+            Manifest.permission.READ_CALL_LOG,
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             need.add(Manifest.permission.POST_NOTIFICATIONS)
