@@ -24,7 +24,8 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Contract check (app routes match backend)
-        run: python intercept-android/verify_contract.py
+        # NOTE: this job defaults to working-directory intercept-android.
+        run: python verify_contract.py
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5

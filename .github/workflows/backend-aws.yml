@@ -34,6 +34,7 @@ jobs:
         run: |
           cd intercept-backend
           pip install -r requirements.txt
+          pip install pytest
           python -m pytest -q
 
   push:

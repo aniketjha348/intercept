@@ -3,8 +3,9 @@ import re
 import sys
 from pathlib import Path
 
-ANDROID = Path("D:/intercept/intercept-android/app/src/main/java/com/intercept")
-BACKEND = Path("D:/intercept/intercept-backend")
+ROOT = Path(__file__).resolve().parent  # .../intercept-android on any machine/CI
+ANDROID = ROOT / "app/src/main/java/com/intercept"
+BACKEND = ROOT.parent / "intercept-backend"
 failures = []
 
 
