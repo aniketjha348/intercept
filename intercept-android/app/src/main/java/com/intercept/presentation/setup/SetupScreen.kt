@@ -173,14 +173,37 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
         ActivityResultContracts.StartActivityForResult()
     ) { tick++ }
 
+    var roleStatus by remember { mutableStateOf<String?>(null) }
+
     fun requestRole(role: String) {
+        roleStatus = null
         try {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
-            val rm = ctx.getSystemService(RoleManager::class.java) ?: return
-            if (rm.isRoleAvailable(role)) {
-                roleLauncher.launch(rm.createRequestRoleIntent(role))
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                roleStatus = "System roles need Android 10+."
+                return
             }
-        } catch (_: Exception) {
+            val rm = ctx.getSystemService(RoleManager::class.java)
+            if (rm == null) {
+                roleStatus = "Phone service missing — use the Default-apps screen below."
+                return
+            }
+            if (!rm.isRoleAvailable(role)) {
+                roleStatus = "Not offered on this device — use the Default-apps screen below."
+                return
+            }
+            roleLauncher.launch(rm.createRequestRoleIntent(role))
+        } catch (e: Exception) {
+            roleStatus = "Request failed (${e.message}) — use the Default-apps screen below."
+        }
+    }
+
+    fun openDefaultApps() {
+        try {
+            ctx.startActivity(Intent(SysSettings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
+        } catch (e: Exception) {
+            roleStatus = "Could not open settings (${e.message}). Open Settings → Apps → Default apps manually."
+        } finally {
+            tick++
         }
     }
 
@@ -277,6 +300,15 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                     onClick = { requestRole(RoleManager.ROLE_DIALER) },
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Set as Phone app") }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { openDefaultApps() },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Or pick it in Default-apps settings") }
+                roleStatus?.let {
+                    Spacer(Modifier.height(6.dp))
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = Muted)
+                }
             }
 
             GateRow("Battery unrestricted", gates[4].second, "Otherwise Xiaomi/Vivo/Oppo kill protection overnight. Also enable Autostart + lock in Recents.") {

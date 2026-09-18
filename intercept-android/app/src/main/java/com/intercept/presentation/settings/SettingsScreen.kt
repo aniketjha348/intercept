@@ -111,7 +111,7 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
             TextField(
                 value = url,
                 onValueChange = { url = it },
-                label = { Text("Backend URL (emulator: http://10.0.2.2:8000)") },
+                label = { Text("Backend URL (emulator devs: http://10.0.2.2:8000)") },
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(10.dp))

@@ -48,5 +48,21 @@
       "WhatsApp/Telegram ऑटो-स्कैन — पेस्ट करने की ज़रूरत नहीं",
       "नया नाम और आइकन: Intercept AI"
     ]
+  },
+  {
+    "version_code": 4,
+    "version_name": "0.3.1",
+    "date": "2026-09-18",
+    "force": false,
+    "notes_en": [
+      "Fresh installs connect to the live backend automatically",
+      "Default-apps fallback when the dialer prompt fails",
+      "One signature for all builds — updates install cleanly"
+    ],
+    "notes_hi": [
+      "नई इंस्टॉल खुद लाइव बैकएंड से जुड़ती है",
+      "डायलर प्रॉम्प्ट फेल हो तो Default-apps का रास्ता",
+      "हर बिल्ड पर एक ही सिग्नेचर — अपडेट साफ लगेगा"
+    ]
   }
 ]

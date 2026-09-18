@@ -28,8 +28,13 @@ class AppContainer(context: Context) {
     private val prefs: SharedPreferences =
         appContext.getSharedPreferences("intercept", Context.MODE_PRIVATE)
 
+    /** Production backend ships as the default (fresh installs just work);
+     *  emulator devs override it in Settings to http://10.0.2.2:8000. */
     var backendUrl: String
-        get() = prefs.getString("backend_url", "http://10.0.2.2:8000") ?: "http://10.0.2.2:8000"
+        get() = prefs.getString(
+            "backend_url",
+            "http://intercept-backend-1446503107.ap-south-1.elb.amazonaws.com"
+        ) ?: "http://intercept-backend-1446503107.ap-south-1.elb.amazonaws.com"
         set(v) {
             prefs.edit().putString("backend_url", v.trim().trimEnd('/')).apply()
             rebuild()

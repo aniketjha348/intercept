@@ -12,11 +12,13 @@ android {
         applicationId = "com.intercept"
         minSdk = 29
         targetSdk = 34
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.3.1"
     }
-    // Production signing comes from env (CI secrets) — never commit the keystore.
-    // Without these vars the release build stays unsigned-debug-signed and still installs.
+    // Signing order: real upload key from env (Play, never committed) →
+    // shared repo debug keystore (same signature on EVERY build, everywhere:
+    // local, CI, releases — installs update cleanly instead of conflicting).
+    // Debug keystores are public by design; the Play upload key stays secret.
     signingConfigs {
         create("prod") {
             val ks = System.getenv("INTERCEPT_KEYSTORE") ?: ""
@@ -27,8 +29,17 @@ android {
                 keyPassword = System.getenv("INTERCEPT_KEY_PASSWORD")
             }
         }
+        getByName("debug") {
+            storeFile = file("../keystore/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             val ks = System.getenv("INTERCEPT_KEYSTORE") ?: ""
