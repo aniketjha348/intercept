@@ -462,22 +462,24 @@ class LiveCallViewModel(
         } catch (_: Exception) {
         }
         socket?.sendTakeover()
-        // Switch to speaker so the USER can talk to the caller directly.
-        // AI is off mic now — this is a normal hands-free call.
+        // Unmute the call stream so the USER can hear the caller,
+        // then switch to speaker for hands-free takeover.
+        try {
+            val am = container.appContextForVoice().getSystemService(android.content.Context.AUDIO_SERVICE)
+                as android.media.AudioManager
+            am.adjustStreamVolume(
+                android.media.AudioManager.STREAM_VOICE_CALL,
+                android.media.AudioManager.ADJUST_UNMUTE, 0
+            )
+            am.mode = android.media.AudioManager.MODE_IN_CALL
+        } catch (_: Exception) {
+        }
         try {
             InterceptInCallService.setSpeaker(true)
         } catch (_: Exception) {
         }
         try {
             container.stopVoice()
-        } catch (_: Exception) {
-        }
-        // Restore normal mic mode so the user's voice goes through the
-        // call naturally (not routed through the call-stream path).
-        try {
-            val am = container.appContextForVoice().getSystemService(android.content.Context.AUDIO_SERVICE)
-                as android.media.AudioManager
-            am.mode = android.media.AudioManager.MODE_IN_CALL
         } catch (_: Exception) {
         }
         _state.update { it.copy(humanMode = true, listening = false) }

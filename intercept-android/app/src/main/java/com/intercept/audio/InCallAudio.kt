@@ -28,10 +28,22 @@ class InCallAudio(context: Context) {
             prevMode = audio?.mode ?: AudioManager.MODE_NORMAL
             prevSpeaker = audio?.isSpeakerphoneOn == true
             audio?.mode = AudioManager.MODE_IN_COMMUNICATION
-            // AI screening is silent to the owner: earpiece, never speaker.
+            // AI screening is SILENT to the owner: earpiece off, speaker off.
+            // The owner must NOT hear the guardian voice at all — only the
+            // caller hears it through the call uplink (STREAM_VOICE_CALL).
             audio?.isSpeakerphoneOn = false
-            // Caller must HEAR the guardian: max the voice-call stream
-            // (this is the uplink, the direction the owner is not listening to).
+            // Mute the earpiece output so even the phone line audio doesn't
+            // reach the owner's ear. The mic stays live for the caller's voice.
+            try {
+                audio?.isStreamMute(AudioManager.STREAM_VOICE_CALL)?.let {
+                    if (!it) audio?.adjustStreamVolume(
+                        AudioManager.STREAM_VOICE_CALL,
+                        AudioManager.ADJUST_MUTE, 0
+                    )
+                }
+            } catch (_: Exception) {
+            }
+            // Max the uplink so the caller hears the guardian clearly.
             prevVolume = audio?.getStreamVolume(AudioManager.STREAM_VOICE_CALL) ?: -1
             val max = audio?.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL) ?: -1
             if (max > 0) {
@@ -45,6 +57,14 @@ class InCallAudio(context: Context) {
         if (!active) return
         active = false
         try {
+            // Unmute so the user can hear again after takeover / call end.
+            try {
+                audio?.adjustStreamVolume(
+                    AudioManager.STREAM_VOICE_CALL,
+                    AudioManager.ADJUST_UNMUTE, 0
+                )
+            } catch (_: Exception) {
+            }
             audio?.isSpeakerphoneOn = prevSpeaker
             audio?.mode = prevMode
             if (prevVolume >= 0) {
