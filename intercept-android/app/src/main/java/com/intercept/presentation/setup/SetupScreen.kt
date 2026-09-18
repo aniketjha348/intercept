@@ -169,11 +169,29 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
         tick++
     }
 
+    var pendingRole by remember { mutableStateOf<String?>(null) }
+    var roleStatus by remember { mutableStateOf<String?>(null) }
+
     val roleLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) { tick++ }
-
-    var roleStatus by remember { mutableStateOf<String?>(null) }
+    ) {
+        // Returned without the role? Tell the user exactly what to do next.
+        try {
+            val rm = ctx.getSystemService(RoleManager::class.java)
+            val stillMissing = pendingRole != null && rm != null &&
+                !(rm.isRoleAvailable(pendingRole!!) && rm.isRoleHeld(pendingRole!!))
+            roleStatus = if (stillMissing) {
+                "No change — tap again and choose Intercept AI in the system dialog, " +
+                    "or use the Default-apps screen below."
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+        } finally {
+            pendingRole = null
+            tick++
+        }
+    }
 
     fun requestRole(role: String) {
         roleStatus = null
@@ -191,6 +209,7 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                 roleStatus = "Not offered on this device — use the Default-apps screen below."
                 return
             }
+            pendingRole = role
             roleLauncher.launch(rm.createRequestRoleIntent(role))
         } catch (e: Exception) {
             roleStatus = "Request failed (${e.message}) — use the Default-apps screen below."
