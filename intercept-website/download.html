@@ -3,38 +3,44 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Download — INTERCEPT</title>
+<title>Get INTERCEPT — Download for Android</title>
+<meta name="description" content="Download INTERCEPT for Android and turn on scam-call protection in two minutes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <header class="nav">
-  <a class="brand" href="index.html">🛡 INTERCEPT</a>
+  <a class="brand" href="index.html">Intercept<span class="dot">.</span></a>
   <nav>
-    <a href="download.html">Download</a>
+    <a href="download.html">Get the app</a>
     <a href="updates.html">Updates</a>
     <a href="privacy.html">Privacy</a>
   </nav>
 </header>
 
 <main class="narrow">
-  <h1>Download INTERCEPT</h1>
-  <div class="card" id="latest-card">
-    <p class="kicker">LATEST VERSION</p>
+  <h1>Get INTERCEPT</h1>
+  <p class="muted">Two minutes from download to protected.</p>
+
+  <div class="panel" id="latest-card">
+    <p class="muted small">Latest version</p>
     <h2 id="dl-version">Checking…</h2>
     <p id="dl-date" class="muted"></p>
     <ul id="dl-notes"></ul>
-    <a class="btn primary" id="dl-btn" href="#">⬇ Download APK</a>
+    <a class="btn primary" id="dl-btn" href="#">Download APK</a>
     <p class="muted small">Android 10+. ~15 MB. Free during early access.</p>
   </div>
 
-  <h2>Install in 1 minute</h2>
-  <ol class="steps">
-    <li>Tap <strong>Download APK</strong> on your phone (or scan the QR below from your phone camera).</li>
-    <li>Open the file → allow <strong>“Install unknown apps”</strong> for your browser when asked.</li>
-    <li>Open INTERCEPT → allow call-screening role → done. Updates arrive inside the app.</li>
+  <h2>Install in a minute</h2>
+  <ol class="steps-list">
+    <li>Tap <strong>Download APK</strong> on your phone, or scan the code below with your phone camera.</li>
+    <li>Open the file and allow <strong>install unknown apps</strong> for your browser when asked.</li>
+    <li>Open INTERCEPT, finish the two-minute setup, and let it answer the strangers.</li>
   </ol>
-  <div class="card center">
-    <div id="dl-qr"></div>
+  <div class="panel center">
+    <div id="dl-qr" class="qrwrap"></div>
     <p class="muted small">Scan to download on your phone</p>
   </div>
 
@@ -43,8 +49,10 @@
 </main>
 
 <footer>
-  <span>© 2026 INTERCEPT</span>
-  <span><a href="privacy.html">Privacy</a> · <a href="updates.html">Changelog</a></span>
+  <div class="wrap">
+    <span>© 2026 INTERCEPT</span>
+    <span><a href="privacy.html">Privacy</a> · <a href="updates.html">Changelog</a></span>
+  </div>
 </footer>
 <script src="site.js"></script>
 </body>
