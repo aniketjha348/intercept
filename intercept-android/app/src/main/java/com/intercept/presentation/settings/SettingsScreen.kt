@@ -6,6 +6,10 @@ import android.app.role.RoleManager
 
 import android.content.Intent
 
+import android.net.Uri
+
+import android.provider.Settings
+
 import android.os.Build
 
 import android.telecom.TelecomManager
@@ -100,6 +104,8 @@ import com.intercept.presentation.theme.Ink
 
 import com.intercept.presentation.theme.Machine
 
+import com.intercept.overlay.OverlayService
+
 import com.intercept.presentation.theme.Muted
 
 import com.intercept.presentation.theme.Paper
@@ -152,7 +158,26 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
 
     var autoApps by remember { mutableStateOf(container.autoApps) }
 
+    var overlay by remember { mutableStateOf(container.overlayOn) }
+
     var status by remember { mutableStateOf<StatusMsg?>(null) }
+
+    val overlayLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (Settings.canDrawOverlays(ctx)) {
+            overlay = true
+            container.overlayOn = true
+            OverlayService.start(ctx)
+        } else {
+            overlay = false
+            container.overlayOn = false
+            status = StatusMsg(
+                "Overlay not allowed — turn it on to use the floating button.",
+                Tone.WARN,
+            )
+        }
+    }
 
 
 
@@ -393,6 +418,42 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
                 checked = autoApps,
 
             ) { autoApps = it; container.autoApps = it }
+
+            SwitchRow(
+
+                title = "Floating button",
+
+                subtitle = "Quick actions over any app.",
+
+                checked = overlay,
+
+            ) {
+                if (it) {
+                    if (Settings.canDrawOverlays(ctx)) {
+                        overlay = true
+                        container.overlayOn = true
+                        OverlayService.start(ctx)
+                    } else {
+                        try {
+                            overlayLauncher.launch(
+                                Intent(
+                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    Uri.parse("package:${ctx.packageName}"),
+                                )
+                            )
+                        } catch (_: Exception) {
+                            status = StatusMsg(
+                                "Could not open overlay settings.",
+                                Tone.BAD,
+                            )
+                        }
+                    }
+                } else {
+                    overlay = false
+                    container.overlayOn = false
+                    OverlayService.stop(ctx)
+                }
+            }
 
 
 
