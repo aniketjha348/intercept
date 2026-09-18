@@ -19,10 +19,9 @@ resource "aws_iam_role" "deploy" {
       Effect    = "Allow"
       Principal = { Federated = aws_iam_openid_connect_provider.github.arn }
       Action    = "sts:AssumeRoleWithWebIdentity"
-      # TEMPORARY isolation test: aud-only (proves whether the sub condition
-      # is the blocker). WILL BE RE-TIGHTENED before real users. See run log.
       Condition = {
         StringEquals = { "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com" }
+        StringLike   = { "token.actions.githubusercontent.com:sub" = "repo:aniketjha348/intercept:*" }
       }
     }]
   })
