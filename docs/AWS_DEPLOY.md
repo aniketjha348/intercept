@@ -55,8 +55,23 @@ terraform output    # → api_url, ecr_uri, deploy_role_arn
 
 ```powershell
 git push origin main                 # deploys itself, smoke-gated
-git tag v0.3.0; git push origin v0.3.0   # + public APK/AAB Release
 ```
+
+## 4b. Shipping an app update (website + in-app updater move together)
+
+One release = 4 edits, same numbers everywhere, then tag. Miss one and users
+either never see the update or download a dead link:
+
+1. `intercept-android/app/build.gradle.kts` → bump `versionCode` (+1) + `versionName`.
+2. `intercept-backend/app/updates.json` → append entry (same code/name/notes, no `apk_url` key — the server injects it).
+3. `intercept-website/updates.json` → same entry + `"apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk"`.
+4. Commit + push, then:
+```powershell
+git tag v0.3.0; git push origin v0.3.0   # public APK/AAB Release; `latest` moves itself
+```
+
+Check after: live `/app/latest` shows the new code, the website download card
+shows the new name, and an old install pops the update dialog.
 
 Backend secrets rotate without rebuilds: update the Secrets Manager value →
 push anything (or run the workflow) → fresh tasks pick it up.

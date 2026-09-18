@@ -24,13 +24,33 @@ class CallWebSocket(
     baseUrl: String,
     sessionId: String,
     private val onEvent: (CallEvent) -> Unit,
+    private val onError: () -> Unit = {},
 ) {
     private val url = baseUrl.replace("http", "ws").trimEnd('/') + "/ws/calls/$sessionId"
     private var ws: WebSocket? = null
+    private var dead = false
+
+    private fun fail() {
+        if (dead) return
+        dead = true
+        try {
+            onError()
+        } catch (_: Exception) {
+        }
+    }
 
     private val listener = object : WebSocketListener() {
         override fun onMessage(webSocket: WebSocket, text: String) {
             parse(text)?.let(onEvent)
+        }
+
+        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            fail()
+        }
+
+        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            // Abnormal close only; clean shutdowns call close() after the call ends.
+            if (code != 1000) fail()
         }
     }
 

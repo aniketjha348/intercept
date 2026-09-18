@@ -64,6 +64,12 @@ fun ReportsScreen(nav: NavController, container: AppContainer) {
             Button(onClick = ::load, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                 if (busy) CircularProgressIndicator() else Text("Load report")
             }
+            if (sid.isBlank() && report == null && error == null) {
+                Text(
+                    "No session yet — screen a call or run the demo first, then its report lands here.",
+                    style = MaterialTheme.typography.bodySmall, color = Color.Gray
+                )
+            }
             error?.let { Text(it, color = Color.Red) }
             report?.let { r ->
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {

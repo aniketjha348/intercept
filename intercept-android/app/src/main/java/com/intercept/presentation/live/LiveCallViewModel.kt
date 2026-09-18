@@ -63,7 +63,17 @@ class LiveCallViewModel(
 
     fun connect() {
         try {
-            socket = CallWebSocket(container.http, container.backendUrl, sessionId, ::onEvent)
+            socket = CallWebSocket(container.http, container.backendUrl, sessionId, ::onEvent) {
+                // Stream died mid-call (tunnel drop, network hop): fall back to REST
+                // so typed/mic turns keep working instead of vanishing silently.
+                useSocket = false
+                _state.update {
+                    it.copy(
+                        connected = false,
+                        error = "Live stream dropped — backup channel on. Resend if a reply stalls."
+                    )
+                }
+            }
             _state.update { it.copy(connected = true) }
         } catch (_: Exception) {
             useSocket = false

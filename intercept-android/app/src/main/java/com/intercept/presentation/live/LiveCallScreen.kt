@@ -218,9 +218,13 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
                 }
                 Spacer(Modifier.height(6.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { vm.playDemo() }, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                        Text("Demo scam")
+                    // Scripted demo stays out of real screenings: fake turns would
+                    // pollute a genuine call's report (and the caller's ears).
+                    if (!s.realCall && AutoScreenService.activeCallSession != sid) {
+                        OutlinedButton(onClick = { vm.playDemo() }, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                            Text("Demo scam")
+                        }
                     }
                     if (s.offerTakeover && !s.humanMode) {
                         OutlinedButton(onClick = { vm.takeover() }, modifier = Modifier.weight(1f)) {

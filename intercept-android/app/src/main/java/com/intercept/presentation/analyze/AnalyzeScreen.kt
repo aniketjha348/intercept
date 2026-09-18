@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -123,6 +124,26 @@ fun AnalyzeScreen(nav: NavController, container: AppContainer) {
             }
             error?.let { Text(it, color = Color.Red) }
             result?.let { r ->
+                if (container.simpleMode) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (r.risk >= 50) Color(0xFFC62828) else Color(0xFF2E7D32)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text(
+                                if (r.risk >= 50) "This looks dangerous. Do not follow its instructions."
+                                else "This looks safe.",
+                                color = Color.White, style = MaterialTheme.typography.titleMedium
+                            )
+                            if (r.simple.isNotEmpty()) {
+                                Spacer(Modifier.height(6.dp))
+                                Text(r.simple, color = Color.White)
+                            }
+                        }
+                    }
+                }
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Risk ${r.risk} — ${r.level.label}", color = Color(r.level.color), style = MaterialTheme.typography.titleMedium)
