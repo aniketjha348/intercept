@@ -349,7 +349,7 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                 ) { Text("Allow background running") }
             }
 
-            GateRow("Notification access", gates[5].second, "Lets Intercept scan WhatsApp/Telegram messages with zero paste.") {
+            GateRow("Notification access", gates[5].second, "Lets Intercept scan WhatsApp, Telegram, Signal, Instagram and more with zero paste.") {
                 OutlinedButton(
                     onClick = {
                         try {

@@ -193,7 +193,7 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
             ) { autoSms = it; container.autoSms = it }
             SwitchRow(
                 title = "Auto-scan app messages",
-                subtitle = "WhatsApp/Telegram notifications, zero paste.",
+                subtitle = "WhatsApp, Telegram, Signal, Instagram… — zero paste.",
                 checked = autoApps,
             ) { autoApps = it; container.autoApps = it }
 

@@ -27,10 +27,18 @@ import kotlinx.coroutines.launch
 class InterceptNotifications : NotificationListenerService() {
 
     companion object {
+        // Every chat app whose message text Android shows in notifications.
+        // No API, no root, no paste — the OS hands us the text, we judge it.
         private val CHAT_APPS = setOf(
             "com.whatsapp", "com.whatsapp.w4b",
             "org.telegram.messenger", "org.telegram.messenger.web",
-            "com.facebook.orca",
+            "org.thunderdog.challegram", // Telegram X
+            "com.facebook.orca", // Messenger
+            "org.signal.private_messenger",
+            "com.instagram.android",
+            "com.google.android.apps.messaging", // SMS/RCS overflow
+            "com.discord",
+            "com.snapchat.android",
         )
         private const val ALERT_CHANNEL = "intercept_alert"
         private const val RISK_THRESHOLD = 25
@@ -93,6 +101,7 @@ class InterceptNotifications : NotificationListenerService() {
             id = ("call$title").hashCode(),
             heading = "📞 $title — stay sharp",
             body = "Internet calls can't be auto-screened by any app. If they demand OTP, money or codes — hang up, then verify the person separately.",
+            fullScreen = true, // unmissable, like a real incoming-call screen
         )
     }
 
@@ -104,7 +113,7 @@ class InterceptNotifications : NotificationListenerService() {
         )
     }
 
-    private fun notify(id: Int, heading: String, body: String) {
+    private fun notify(id: Int, heading: String, body: String, fullScreen: Boolean = false) {
         try {
             val nm = getSystemService(NotificationManager::class.java) ?: return
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -118,18 +127,19 @@ class InterceptNotifications : NotificationListenerService() {
                 this, id, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            nm.notify(
-                id,
-                NotificationCompat.Builder(this, ALERT_CHANNEL)
-                    .setSmallIcon(android.R.drawable.ic_dialog_alert)
-                    .setContentTitle(heading)
-                    .setContentText(body)
-                    .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-                    .setPriority(NotificationCompat.PRIORITY_HIGH)
-                    .setAutoCancel(true)
-                    .setContentIntent(pi)
-                    .build()
-            )
+            val builder = NotificationCompat.Builder(this, ALERT_CHANNEL)
+                .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                .setContentTitle(heading)
+                .setContentText(body)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pi)
+            if (fullScreen) {
+                builder.setCategory(NotificationCompat.CATEGORY_CALL)
+                builder.setFullScreenIntent(pi, true)
+            }
+            nm.notify(id, builder.build())
         } catch (_: Exception) {
         }
     }
