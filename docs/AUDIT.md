@@ -333,6 +333,9 @@ the caller went quiet) reset the mode to `MODE_NORMAL` and silently undid the ro
 - **Telecom behaviour** (findings 5–6) needs a device + `ROLE_DIALER` / `ROLE_CALL_SCREENING`. See
   [Device Test Checklist](./testing/DeviceTestChecklist.md) → *Path D*.
 - **LiveKit token/dispatch** (finding 4) needs `LIVEKIT_URL`/`KEY`/`SECRET` configured.
+- **Earpiece vs speaker** (finding 29) needs a real call + `ROLE_CALL_SCREENING`: during AI screening the guardian voice
+  must reach the caller and **not** the room around the owner, and the takeover/speaker control must still move it to
+  the speaker.
 - **The round-3 URL fixes are the exception** — no permissions needed, so they are checkable on any build:
   Settings → clear the backend field → Save (must show a red *"Not a usable URL"*, not crash), then relaunch
   (must still start); type `10.0.2.2:8000` → Save (accepted as `http://10.0.2.2:8000`); type `api.example.com`
