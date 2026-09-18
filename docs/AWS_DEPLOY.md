@@ -87,3 +87,4 @@ push anything (or run the workflow) → fresh tasks pick it up.
 
 Fargate 0.25vCPU/0.5GB 1 task ~$9/mo + ALB ~$17/mo + ECR/S3/logs pennies.
 EC2 pilot (if still up) should be deleted after cutover — two backends = double bill.
+Before deployment, verify that all required environment variables and configuration settings are properly configured.
