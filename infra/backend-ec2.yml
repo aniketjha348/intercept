@@ -49,6 +49,7 @@ Parameters:
 Resources:
   EcrRepo:
     Type: AWS::ECR::Repository
+    DeletionPolicy: Retain # Terraform owns this repo now; stack delete must not touch it
     Properties:
       RepositoryName: !Ref EcrRepoName
       ImageScanningConfiguration:
