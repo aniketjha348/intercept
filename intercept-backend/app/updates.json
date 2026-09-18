@@ -203,5 +203,18 @@
       "Is version me taze fixes aur sudhaar",
       "App kholte hi update mil jayega"
     ]
+  },
+  {
+    "version_code": 14,
+    "version_name": "0.4.7",
+    "date": "2026-09-18",
+    "force": false,
+    "notes_en": [
+      "v0.4.7: tel-scheme DIAL filter (AOSP list requirement) — dialer gate fix"
+    ],
+    "notes_hi": [
+      "Is version me taze fixes aur sudhaar",
+      "App kholte hi update mil jayega"
+    ]
   }
 ]
