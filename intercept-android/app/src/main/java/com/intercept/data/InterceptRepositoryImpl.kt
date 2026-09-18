@@ -67,6 +67,14 @@ class InterceptRepositoryImpl(
         false
     }
 
+    override suspend fun speak(sessionId: String, text: String): ByteArray? = try {
+        val r = api.speak(sessionId, com.intercept.data.api.SpeakRequest(text))
+        if (!r.voice || r.audioB64.isNullOrBlank()) null
+        else android.util.Base64.decode(r.audioB64, android.util.Base64.DEFAULT)
+    } catch (_: Exception) {
+        null
+    }
+
     override suspend fun checkUpdate(installedCode: Int): UpdateInfo? = try {
         val l = api.latest()
         if (l.apkUrl.isBlank() || l.versionCode <= installedCode) null

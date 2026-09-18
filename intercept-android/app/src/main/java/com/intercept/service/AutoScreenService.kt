@@ -164,15 +164,15 @@ class AutoScreenService : Service() {
             container.tts.setCallMode(true)
         } catch (_: Exception) {
         }
-        if (container.ttsEnabled) {
-            try {
-                container.tts.speakForCall(
-                    "Namaste! Main INTERCEPT hoon, is call ki suraksha jaanch kar raha hoon. " +
-                        "Kripya apna naam aur kaam batayein. " +
-                        "Hello, this call is being screened. Please introduce yourself."
-                )
-            } catch (_: Exception) {
-            }
+        try {
+            container.speakBest(
+                sid,
+                "Namaste! Main INTERCEPT hoon, is call ki suraksha jaanch kar raha hoon. " +
+                    "Kripya apna naam aur kaam batayein. " +
+                    "Hello, this call is being screened. Please introduce yourself.",
+                forCall = true
+            )
+        } catch (_: Exception) {
         }
         withContext(Dispatchers.Main) { startEars(sid) }
         // Wait until the caller hangs up or the AI terminates.
@@ -201,12 +201,11 @@ class AutoScreenService : Service() {
             onFinalText = { text ->
                 scope.launch {
                     try {
+                        // Barge-in: caller spoke → cut our voice like an interrupted human.
+                        container.stopVoice()
                         val turn = container.repo.sendCallerTurn(sid, text)
-                        if (container.ttsEnabled && !turn.reply.isBlank()) {
-                            try {
-                                container.tts.speakForCall(turn.reply)
-                            } catch (_: Exception) {
-                            }
+                        if (!turn.reply.isBlank()) {
+                            container.speakBest(sid, turn.reply, forCall = true)
                         }
                         if (turn.mustTerminate && callDone.compareAndSet(false, true)) {
                             finishCall(sid, terminated = true)
@@ -230,6 +229,12 @@ class AutoScreenService : Service() {
         } catch (_: Exception) {
         }
         stt = null
+        if (container != null) {
+            try {
+                container.stopVoice()
+            } catch (_: Exception) {
+            }
+        }
         try {
             InterceptInCallService.hangup()
         } catch (_: Exception) {

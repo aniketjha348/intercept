@@ -18,6 +18,12 @@ LLM_PROVIDER = _env("LLM_PROVIDER", "auto").lower()  # auto | openai | gemini | 
 OPENAI_API_KEY = _env("OPENAI_API_KEY")
 GOOGLE_API_KEY = _env("GOOGLE_API_KEY")
 LLM_MODEL = _env("LLM_MODEL")
+# Guardian voice: Gemini TTS model chain + per-language voices (empty = code
+# defaults; voices are 30 prebuilt names like Sulafat/Kore — hear them in AI Studio).
+# NOTE: Gemini 2.5 shuts down Oct 2026 → then pin TTS_MODEL to a 3.x TTS model.
+TTS_MODEL = _env("TTS_MODEL")
+TTS_VOICE_HI = _env("TTS_VOICE_HI")
+TTS_VOICE_EN = _env("TTS_VOICE_EN")
 ALLOW_NETWORK_FETCH = _env("ALLOW_NETWORK_FETCH", "false").lower() in ("1", "true", "yes")
 DATABASE_URL = _env("DATABASE_URL", "sqlite:///./intercept.db")
 APP_NAME = "INTERCEPT"

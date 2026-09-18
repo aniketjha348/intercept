@@ -21,6 +21,18 @@ data class StartCallResponse(
 data class TurnRequest(val text: String, val speaker: String = "caller", val language: String? = null)
 
 @Serializable
+data class SpeakRequest(val text: String? = null)
+
+@Serializable
+data class SpeakResponse(
+    @SerialName("audio_b64") val audioB64: String? = null,
+    val mime: String = "audio/wav",
+    val voice: Boolean = false,
+    val cached: Boolean = false,
+    val language: String = "en",
+)
+
+@Serializable
 data class SignalDto(
     val code: String,
     val category: String,

@@ -7,6 +7,7 @@ import com.intercept.data.InterceptRepositoryImpl
 import com.intercept.data.api.InterceptApiService
 import com.intercept.domain.repository.InterceptRepository
 import com.intercept.speech.CallerStt
+import com.intercept.speech.GuardianAudio
 import com.intercept.speech.GuardianTts
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.CoroutineScope
@@ -119,6 +120,41 @@ class AppContainer(context: Context) {
         }
 
     val tts = GuardianTts(appContext)
+
+    /** Human-voice player for server-rendered guardian audio. */
+    val guardianAudio = GuardianAudio(appContext)
+
+    /**
+     * Voice-first reply: server voice when available, device TTS otherwise.
+     * Respects the guardian-voice toggle. Never throws.
+     */
+    suspend fun speakBest(sessionId: String, text: String, forCall: Boolean) {
+        if (!ttsEnabled || text.isBlank()) return
+        try {
+            val bytes = repo.speak(sessionId, text)
+            if (bytes != null && bytes.isNotEmpty()) {
+                guardianAudio.play(bytes, forCall)
+                return
+            }
+        } catch (_: Exception) {
+        }
+        try {
+            if (forCall) tts.speakForCall(text) else tts.speak(text)
+        } catch (_: Exception) {
+        }
+    }
+
+    /** Barge-in / hangup: cut our own voice instantly, like an interrupted human. */
+    fun stopVoice() {
+        try {
+            guardianAudio.stop()
+        } catch (_: Exception) {
+        }
+        try {
+            tts.stop()
+        } catch (_: Exception) {
+        }
+    }
 
     /** Speaker routing for live screening of real calls. */
     val audio = InCallAudio(appContext)

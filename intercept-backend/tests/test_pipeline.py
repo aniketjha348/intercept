@@ -69,6 +69,30 @@ def test_spoofed_brand_domain_still_high():
     assert r.risk_score >= 50, r
 
 
+def test_speak_graceful_without_key(monkeypatch):
+    monkeypatch.setattr("app.core_config.GOOGLE_API_KEY", "")
+    from fastapi.testclient import TestClient
+    from app.main import app
+    c = TestClient(app)
+    sid = c.post("/calls/start", json={"caller": "voice-test"}).json()["session_id"]
+    c.post(f"/calls/{sid}/transcript", json={"text": "SBI KYC, OTP batao", "speaker": "caller"})
+    r = c.post(f"/calls/{sid}/speak", json={})
+    assert r.status_code == 200, r.text
+    assert r.json()["voice"] is False and r.json()["audio_b64"] is None
+    assert c.post("/calls/NOPE/speak", json={}).status_code == 404
+
+
+def test_speak_cached_wav(monkeypatch):
+    import base64 as _b64
+    import app.ai.voice as v
+    v._CACHE.clear()
+    monkeypatch.setattr(v, "_synthesize", lambda t, lang: b"PCM" * 100)
+    b1, cold = v.speak_cached("hello there", "en")
+    b2, hot = v.speak_cached("hello there", "en")
+    assert b1 and cold is False and hot is True and b2 == b1
+    assert _b64.b64decode(b1)[:4] == b"RIFF"  # real WAV container, plays anywhere
+
+
 def test_scam_memory_flags_repeat_pattern():
     mem = ScamMemory()
     analyze(_inp("SBI bank KYC blocked, share OTP now"), user_memory=mem, use_llm=False)

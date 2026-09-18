@@ -20,6 +20,9 @@ interface InterceptRepository {
 
     suspend fun checkHealth(): Boolean
 
+    /** Guardian voice bytes (WAV) for a reply, or null → use device TTS. */
+    suspend fun speak(sessionId: String, text: String): ByteArray?
+
     /** Returns UpdateInfo when server version is newer than installed, else null. */
     suspend fun checkUpdate(installedCode: Int): UpdateInfo?
 }

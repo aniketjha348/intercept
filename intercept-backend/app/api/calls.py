@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.ai import voice
 from app.pipeline import analyze
 from app.db.repository import REPO
 from app.intelligence.scam_memory import Fingerprint
@@ -24,6 +25,10 @@ class Turn(BaseModel):
     text: str
     speaker: str = "caller"
     language: str | None = None
+
+
+class SpeakIn(BaseModel):
+    text: str | None = None  # default: last guardian reply of this session
 
 
 @router.post("/start")
@@ -82,6 +87,25 @@ def transcript(session_id: str, turn: Turn):
             "simple_mode": res.policy.simple_mode_message,
             "offer_takeover": res.policy.offer_takeover,
             "must_terminate": res.policy.must_terminate}
+
+
+@router.post("/{session_id}/speak")
+def speak(session_id: str, body: SpeakIn):
+    """Human-like voice for the guardian reply: base64 WAV (Gemini TTS) or
+    audio_b64=null when unavailable — the app then falls back to device TTS."""
+    sess = MANAGER.get(session_id)
+    if not sess:
+        raise HTTPException(404, "call session not found")
+    text = (body.text or "").strip()
+    if not text and sess.last_result:
+        text = (sess.last_result.guardian_reply or "").strip()
+    if not text:
+        return {"audio_b64": None, "mime": "audio/wav",
+                "voice": False, "cached": False, "language": sess.language}
+    audio_b64, cached = voice.speak_cached(text, sess.language)
+    return {"audio_b64": audio_b64, "mime": "audio/wav",
+            "voice": audio_b64 is not None, "cached": cached,
+            "language": sess.language}
 
 
 @router.post("/{session_id}/takeover")

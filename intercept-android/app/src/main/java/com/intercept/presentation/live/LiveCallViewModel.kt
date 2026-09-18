@@ -98,9 +98,10 @@ class LiveCallViewModel(
             }
             is CallEvent.AiReply -> {
                 _state.update { it.copy(guardianText = e.text) }
-                if (!driven && container.ttsEnabled) {
-                    if (_state.value.realCall) container.tts.speakForCall(e.text)
-                    else container.tts.speak(e.text)
+                if (!driven) {
+                    viewModelScope.launch {
+                        container.speakBest(sessionId, e.text, _state.value.realCall)
+                    }
                 }
             }
             is CallEvent.Takeover ->
@@ -115,6 +116,11 @@ class LiveCallViewModel(
 
     fun sendCallerText(text: String) {
         if (text.isBlank() || _state.value.ended) return
+        // Barge-in: caller started talking → cut our voice instantly.
+        try {
+            container.stopVoice()
+        } catch (_: Exception) {
+        }
         if (useSocket && socket != null) {
             socket?.sendCallerTurn(text, container.language)
         } else {
@@ -138,9 +144,8 @@ class LiveCallViewModel(
                     endedReason = if (r.mustTerminate) r.simple else it.endedReason,
                 )
             }
-            if (!driven && container.ttsEnabled) {
-                if (_state.value.realCall) container.tts.speakForCall(r.reply)
-                else container.tts.speak(r.reply)
+            if (!driven) {
+                container.speakBest(sessionId, r.reply, _state.value.realCall)
             }
             if (r.mustTerminate) stopRealCallAudio()
         } catch (e: Exception) {
@@ -224,6 +229,10 @@ class LiveCallViewModel(
 
     /** Hang up the telecom call + restore audio (backend session ends separately). */
     private fun stopRealCallAudio() {
+        try {
+            container.stopVoice()
+        } catch (_: Exception) {
+        }
         stopListening()
         try {
             InterceptInCallService.hangup()

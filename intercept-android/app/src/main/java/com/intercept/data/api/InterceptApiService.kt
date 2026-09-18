@@ -18,6 +18,9 @@ interface InterceptApiService {
     @POST("calls/{id}/transcript")
     suspend fun sendTurn(@Path("id") id: String, @Body body: TurnRequest): TurnResponse
 
+    @POST("calls/{id}/speak")
+    suspend fun speak(@Path("id") id: String, @Body body: SpeakRequest): SpeakResponse
+
     @POST("calls/{id}/takeover")
     suspend fun takeover(@Path("id") id: String): Map<String, String>
 
