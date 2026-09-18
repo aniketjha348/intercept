@@ -68,6 +68,11 @@ git tag v0.3.3; git push origin v0.3.3
    BOTH feeds by `scripts/release_metadata.py` (notes come from your commits
    since the last tag) → pushed back to main → backend redeploys (`/app/latest`
    fresh) + website syncs (download card fresh).
+4. One-time secret for step 3: `RELEASE_TOKEN` = fine-grained PAT with
+   Contents:write on this repo (Profile → Developer settings → Personal access
+   tokens). Without it the bot's push lands but deploys never trigger
+   (GitHub blocks GITHUB_TOKEN chains) — then run Backend/Website workflows
+   manually via “Run workflow”.
 
 Check after: live `/app/latest` shows the new code, the website download card
 shows the new name, and an old install pops the update dialog. Manual feed

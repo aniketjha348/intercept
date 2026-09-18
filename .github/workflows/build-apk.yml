@@ -95,9 +95,19 @@ jobs:
 
       - name: Commit + push feed update
         if: steps.meta.outputs.changed == 'true'
+        # GITHUB_TOKEN pushes do NOT trigger other workflows (GitHub blocks the
+        # chain to prevent loops) — so deploys would never fire. RELEASE_TOKEN
+        # (fine-grained PAT, Contents:write on this repo) restores the chain.
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           git config user.name "intercept-bot"
           git config user.email "intercept-bot@users.noreply.github.com"
           git add intercept-backend/app/updates.json intercept-website/updates.json
           git commit -m "Release ${GITHUB_REF_NAME}: changelog feeds (auto)"
+          if [ -n "$RELEASE_TOKEN" ]; then
+            git remote set-url origin "https://x-access-token:${RELEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          else
+            echo "RELEASE_TOKEN empty — pushing with GITHUB_TOKEN (deploys will NOT trigger; run them manually)"
+          fi
           git push origin HEAD:main
