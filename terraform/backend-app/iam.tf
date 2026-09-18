@@ -19,11 +19,12 @@ resource "aws_iam_role" "deploy" {
       Effect    = "Allow"
       Principal = { Federated = aws_iam_openid_connect_provider.github.arn }
       Action    = "sts:AssumeRoleWithWebIdentity"
-      # DIAGNOSTIC (temporary): broad sub pattern to isolate condition-vs-token.
-      # Re-tighten to repo:aniketjha348/intercept:* the moment green is proven.
+      # Immutable sub (repo created after 15 July 2026 → GitHub emits
+      # repo:owner@owner-id/repo@repo-id:...). IDs never change, unlike names.
+      # Legacy name-only form FAILS with Not authorized (proven via CloudTrail).
       Condition = {
         StringEquals = { "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com" }
-        StringLike   = { "token.actions.githubusercontent.com:sub" = "repo:*" }
+        StringLike   = { "token.actions.githubusercontent.com:sub" = "repo:aniketjha348@42519163/intercept@1375614139:*" }
       }
     }]
   })
