@@ -343,7 +343,9 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
                                 Text("Demo")
                             }
                         }
-                        if (s.offerTakeover && !s.humanMode) {
+                        // Your call, your choice: read the transcript and grab the
+                        // mic any time — never gated on the AI offering it.
+                        if (!s.humanMode) {
                             OutlinedButton(onClick = { vm.takeover() }, modifier = Modifier.weight(1f)) {
                                 Text("Take over")
                             }
