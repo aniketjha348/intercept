@@ -23,6 +23,12 @@ interface InterceptRepository {
     /** Guardian voice bytes (WAV) for a reply, or null → use device TTS. */
     suspend fun speak(sessionId: String, text: String): ByteArray?
 
+    /** LiveKit room credentials bound to this call session, or null. */
+    suspend fun livekitToken(sessionId: String): com.intercept.domain.model.LiveKitToken?
+
+    /** Send the voice agent into the call's room. False = keep current path. */
+    suspend fun livekitDispatch(room: String): Boolean
+
     /** Returns UpdateInfo when server version is newer than installed, else null. */
     suspend fun checkUpdate(installedCode: Int): UpdateInfo?
 }

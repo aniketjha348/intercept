@@ -25,6 +25,8 @@ data class Stage(val stage: String, val confidence: Double)
 
 data class ChatLine(val speaker: String, val text: String)
 
+data class LiveKitToken(val url: String, val room: String, val token: String)
+
 data class TurnResult(
     val reply: String,
     val risk: Int,

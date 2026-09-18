@@ -106,6 +106,14 @@ data class AnalyzeResponse(
 data class TranscriptLineDto(val speaker: String, val text: String)
 
 @Serializable
+data class TokenDto(
+    val token: String = "",
+    val url: String = "",
+    val room: String = "",
+    val identity: String = "",
+)
+
+@Serializable
 data class ReportResponse(
     @SerialName("call_id") val callId: String = "",
     val caller: String = "",

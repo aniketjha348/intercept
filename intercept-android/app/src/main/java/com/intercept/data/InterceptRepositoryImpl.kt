@@ -75,6 +75,21 @@ class InterceptRepositoryImpl(
         null
     }
 
+    override suspend fun livekitToken(sessionId: String): com.intercept.domain.model.LiveKitToken? = try {
+        val r = api.livekitToken("app-$sessionId", "intercept-$sessionId")
+        if (r.token.isBlank() || r.url.isBlank()) null
+        else com.intercept.domain.model.LiveKitToken(r.url, r.room, r.token)
+    } catch (_: Exception) {
+        null
+    }
+
+    override suspend fun livekitDispatch(room: String): Boolean = try {
+        api.livekitDispatch(mapOf("room" to room, "agent_name" to "intercept-agent"))
+        true
+    } catch (_: Exception) {
+        false
+    }
+
     override suspend fun checkUpdate(installedCode: Int): UpdateInfo? = try {
         val l = api.latest()
         if (l.apkUrl.isBlank() || l.versionCode <= installedCode) null
