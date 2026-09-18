@@ -15,13 +15,13 @@ import httpx
 
 from app import core_config as cfg
 
-_GEMINI_MODEL = cfg.LLM_MODEL or "gemini-2.5-flash-lite"
+_GEMINI_MODEL = cfg.LLM_MODEL or "gemini-3.5-flash-lite"
 _OPENAI_MODEL = cfg.LLM_MODEL if cfg.LLM_PROVIDER == "openai" and cfg.LLM_MODEL else "gpt-4o-mini"
 
 # Text fallbacks, probed 2026-09-18 on our free key: 3.5-flash-lite responds,
-# 2.5-flash responds; 2.5-flash-lite quota exhausts under load. First success
-# sticks (also the Oct-2026 2.5-shutdown bridge — 3.5-flash-lite is the future).
-_TEXT_FALLBACKS = ["gemini-3.5-flash-lite", "gemini-2.5-flash"]
+# 2.5-flash + 3.5-flash respond; 2.5-flash-lite quota exhausts under load.
+# Default is 3.5-flash-lite (Oct-2026 2.5-shutdown-proof). First success sticks.
+_TEXT_FALLBACKS = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-3.5-flash"]
 _WORKING_TEXT: list[str] = []
 
 

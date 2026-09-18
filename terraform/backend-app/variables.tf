@@ -40,7 +40,7 @@ variable "llm_provider" {
 
 variable "llm_model" {
   type    = string
-  default = "gemini-2.5-flash-lite"
+  default = "gemini-3.5-flash-lite"
 }
 
 variable "desired_count" {
