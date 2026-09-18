@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.intercept.audio.InCallAudio
 import com.intercept.data.InterceptRepositoryImpl
 import com.intercept.data.api.InterceptApiService
+import com.intercept.domain.model.CallRecord
 import com.intercept.domain.repository.InterceptRepository
 import com.intercept.speech.CallerStt
 import com.intercept.speech.GuardianAudio
@@ -14,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
@@ -25,6 +27,10 @@ import java.util.concurrent.TimeUnit
 
 private const val DEFAULT_BACKEND_URL =
     "http://intercept-backend-1446503107.ap-south-1.elb.amazonaws.com"
+
+/** How many screened calls the phone remembers. Enough to look back over a
+ *  bad week, small enough that prefs never becomes a database. */
+private const val HISTORY_MAX = 50
 
 /**
  * Local / loopback / emulator host. The only place a missing scheme may be
@@ -149,6 +155,50 @@ class AppContainer(context: Context) {
     var pendingIncomingCaller: String? = null
     val sessionCallers = mutableMapOf<String, String>()
     var lastSessionId: String? = null
+
+    /**
+     * Screened calls this phone knows about, newest first.
+     *
+     * Reports opened on an empty "Session id" field, which only the developer
+     * could fill in — the owner saw their own protection as a blank box. The
+     * list is small and local: sid, caller, final risk, and when.
+     */
+    fun callHistory(): List<CallRecord> {
+        val raw = prefs.getString("call_history", null) ?: return emptyList()
+        return try {
+            json.decodeFromString(ListSerializer(CallRecord.serializer()), raw)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun saveHistory(list: List<CallRecord>) {
+        try {
+            prefs.edit()
+                .putString("call_history",
+                    json.encodeToString(ListSerializer(CallRecord.serializer()), list.take(HISTORY_MAX)))
+                .apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    /** Remembered before we know how the call goes, so a crash mid-call still
+     *  leaves the owner something to open. */
+    fun noteCallStarted(sid: String, caller: String) {
+        val entry = CallRecord(sid = sid, caller = caller, at = System.currentTimeMillis())
+        saveHistory(listOf(entry) + callHistory().filterNot { it.sid == sid })
+    }
+
+    /** The call is over: keep the final reading so history says how bad it got. */
+    fun noteCallEnded(sid: String, risk: Int, level: String, action: String) {
+        val current = callHistory()
+        val existing = current.firstOrNull { it.sid == sid }
+            ?: CallRecord(sid = sid, at = System.currentTimeMillis())
+        saveHistory(
+            listOf(existing.copy(risk = risk, level = level, action = action)) +
+                current.filterNot { it.sid == sid }
+        )
+    }
 
     /** Text shared from another app (Share → INTERCEPT); Analyze consumes it once. */
     var pendingSharedText: String? = null
@@ -313,6 +363,11 @@ class AppContainer(context: Context) {
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(InterceptApiService::class.java)
-        repo = InterceptRepositoryImpl(api) { language }
+        repo = InterceptRepositoryImpl(
+            api,
+            { language },
+            { sid, caller -> noteCallStarted(sid, caller) },
+            { sid, risk, level, action -> noteCallEnded(sid, risk, level, action) },
+        )
     }
 }

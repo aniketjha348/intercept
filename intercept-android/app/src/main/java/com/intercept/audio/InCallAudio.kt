@@ -4,9 +4,12 @@ import android.content.Context
 import android.media.AudioManager
 
 /**
- * Screening audio routing: speakerphone on so the caller hears the guardian
- * voice and the mic picks the caller up. Previous audio state is restored
- * when screening ends. Needs MODIFY_AUDIO_SETTINGS (manifest).
+ * Screening audio routing. The AI deals with the caller on the owner's behalf,
+ * so the local ear stays on the EARPIECE: the owner holding the phone must not
+ * hear the guardian voice. Only the caller does, through uplink injection —
+ * STREAM_VOICE_CALL carries the TTS up the line regardless of local routing.
+ * Speaker is reserved for a user-initiated takeover. Previous audio state is
+ * restored when screening ends. Needs MODIFY_AUDIO_SETTINGS (manifest).
  */
 class InCallAudio(context: Context) {
 
@@ -25,9 +28,10 @@ class InCallAudio(context: Context) {
             prevMode = audio?.mode ?: AudioManager.MODE_NORMAL
             prevSpeaker = audio?.isSpeakerphoneOn == true
             audio?.mode = AudioManager.MODE_IN_COMMUNICATION
-            audio?.isSpeakerphoneOn = true
+            // AI screening is silent to the owner: earpiece, never speaker.
+            audio?.isSpeakerphoneOn = false
             // Caller must HEAR the guardian: max the voice-call stream
-            // (uplink injection volume follows it on most devices).
+            // (this is the uplink, the direction the owner is not listening to).
             prevVolume = audio?.getStreamVolume(AudioManager.STREAM_VOICE_CALL) ?: -1
             val max = audio?.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL) ?: -1
             if (max > 0) {

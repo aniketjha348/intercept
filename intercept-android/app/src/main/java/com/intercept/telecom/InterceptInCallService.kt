@@ -66,7 +66,10 @@ class InterceptInCallService : InCallService() {
         // where the system would timeout or user would interact before answer completed.
         return try {
             call.answer(0)
-            setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+            // Route to earpiece during AI screening — only the caller (on the
+            // phone line) should hear the guardian voice, NOT the user holding
+            // the phone. Speaker is for user-initiated takeover only.
+            setAudioRoute(CallAudioState.ROUTE_EARPIECE)
             try {
                 applicationContext.appContainer().pendingIncomingCaller = number
             } catch (_: Exception) {
@@ -114,13 +117,13 @@ class InterceptInCallService : InCallService() {
             false
         }
 
-        /** Answer on speakerphone. False when no telecom call is held. */
+        /** Answer on earpiece (AI screens silently). User taps speaker to take over. */
         fun answer(): Boolean {
             val svc = instance ?: return false
             val call = svc.target() ?: return false
             return try {
                 if (call.state == Call.STATE_RINGING) call.answer(0)
-                svc.setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+                svc.setAudioRoute(CallAudioState.ROUTE_EARPIECE)
                 true
             } catch (_: Exception) {
                 false

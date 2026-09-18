@@ -228,6 +228,81 @@ zero-width bar; `RiskChip` on dark uses `RoomRaised` + the room ramp; report fie
 (`likely_objective` → `objective`, `claimed_org`) is correct in both directions; `Common.kt` components have
 no state to get wrong.
 
+## Round 4 — size, history, and honest copy
+
+A pass over what the app *ships* and what it *says*, rather than what it computes. No backend change.
+
+### 23. Every download carried WebRTC for CPUs a phone cannot have — HIGH (size)
+`app/build.gradle.kts`
+
+`ndk.abiFilters` was never set, so the LiveKit `.so` shipped for `x86` and `x86_64` as well as the two ARM ABIs —
+11–15 MB each, roughly 27 MB of native code that only emulators can load, paid by every real phone on download.
+`defaultConfig` now keeps `arm64-v8a`/`armeabi-v7a`; `debug` adds `x86_64` back so emulators still run.
+
+### 24. The release build shipped everything R8 would have removed — HIGH (size)
+`app/build.gradle.kts`
+
+`release { isMinifyEnabled = false }`. `material-icons-extended` alone is thousands of vectors the UI never draws,
+and LiveKit carries Java the app never calls; with the shrinker off all of it rode along in the bundle. Now
+`isMinifyEnabled = true` + `isShrinkResources = true`, with the `proguard-rules.pro` added in this change spelling
+out the one thing R8 must *not* remove: `@Serializable` classes are reached only by generated `$$serializer`
+Companions, so deleting them would make every decode throw at runtime.
+
+**Not verifiable here** — see the note at the end; CI's `bundleRelease` is the first build to run R8.
+
+### 25. Reports opened on a blank box only the developer could fill — HIGH
+`presentation/reports/ReportsScreen.kt`, `di/AppContainer.kt`, `domain/model/Models.kt`
+
+After a screened call the owner landed on Reports and found a `Session id` text field — a value they have no way
+of knowing. The report existed; the way in did not. The phone now records each call itself: `CallRecord`
+(sid, caller, final risk, level, action, time) is written the moment `/calls/start` returns and finalised when the
+report does, capped at 50, and Reports lists them newest-first with a relative time. The id field survives as a
+fallback behind "Have a session id?", hidden entirely once there is history. Recording lives in
+`InterceptRepositoryImpl`'s call/end hooks rather than at each call site, so mic, auto-answer and tap-to-screen all
+land in history without any one path being able to forget.
+
+### 26. The image you attached followed you to the next tab — MEDIUM
+`presentation/analyze/AnalyzeScreen.kt`
+
+Switching Analyze tabs cleared the result but not `imageB64`, so a screenshot taken on SCREENSHOT could be sent to
+the QR decoder, and a hidden image kept the Analyze button looking ready on a tab that showed nothing. The tab
+switch now clears it, and the button's enabled state is computed per tab — an image counts only where an image is
+actually read. Because this build ships no OCR/QR decode, an image-only run is also labelled as limited rather than
+allowed to come back clean having read nothing.
+
+### 27. Progress was a full-size spinner or a literal "..." — LOW
+`presentation/components/Common.kt`, `AnalyzeScreen.kt`, `ReportsScreen.kt`, `HomeScreen.kt`,
+`setup/SetupScreen.kt`
+
+`CircularProgressIndicator()` is 40dp and shoved the button's height around the instant work started; Home's update
+button said `"..."`, which is punctuation, not progress. One `InlineLoader` (18dp, 2dp stroke, the button's own
+`LocalContentColor`) replaces all five.
+
+### 28. Errors showed the exception, not the problem — MEDIUM
+`AnalyzeScreen.kt`, `ReportsScreen.kt`
+
+`"Backend unreachable: ${e.message}"` and `"No report: ${e.message}"` handed a worried owner a stack-trace fragment
+or an HTTP status. Both are now sentences about their call — "could not reach Intercept", "that report is not
+available right now" — with no internal text on screen.
+
+### 29. AI screening played the guardian voice out of the speaker — MEDIUM (privacy)
+`telecom/InterceptInCallService.kt`, `audio/InCallAudio.kt`, `speech/CallerStt.kt`,
+`service/AutoScreenService.kt`
+
+Screening answered the call on `ROUTE_SPEAKER` and `InCallAudio` forced `isSpeakerphoneOn = true`, so the guardian's
+prompt and the scammer's replies played audibly beside the owner — the exact person the feature exists to shield.
+The `InCallService` now answers to the **earpiece** and `InCallAudio` keeps it there; speaker is left to the owner's
+own takeover button. The caller still hears the guardian because that is uplink (`STREAM_VOICE_CALL`), which local
+routing does not affect.
+
+Pulling on that thread exposed a second problem: `MODE_IN_COMMUNICATION` had *three* writers — `InCallAudio`,
+`AutoScreenService` and every `CallerStt.begin()`/`stop()` — so the recognizer restarting mid-call (or stopping as
+the caller went quiet) reset the mode to `MODE_NORMAL` and silently undid the routing for the rest of the screening.
+`InCallAudio` now owns the mode for the whole call — it already saved and restored the previous state around
+`enter()`/`exit()` — and the other two no longer touch it.
+
+**Not verifiable here** — earpiece/speaker is a device behaviour; see the checklist note at the end.
+
 ---
 
 ## Deliberately not changed

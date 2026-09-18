@@ -44,6 +44,7 @@ import com.intercept.domain.model.LiveSession
 import com.intercept.domain.model.UpdateInfo
 import com.intercept.presentation.components.ActionRow
 import com.intercept.presentation.components.BrandMark
+import com.intercept.presentation.components.InlineLoader
 import com.intercept.presentation.components.SectionLabel
 import com.intercept.presentation.components.StatusDot
 import com.intercept.presentation.navigation.Routes
@@ -118,7 +119,13 @@ fun HomeScreen(nav: NavController, container: AppContainer) {
                         downloadId = UpdateManager.download(ctx, u.apkUrl)
                         if (!u.force) update = null
                     }
-                ) { Text(if (downloading) "..." else if (container.language == "hi") "डाउनलोड" else "Download") }
+                ) {
+                    // A literal "..." is not progress. The download keeps running
+                    // in the system notification either way, so show that it is
+                    // working rather than pretending the button is idle.
+                    if (downloading) InlineLoader()
+                    else Text(if (container.language == "hi") "डाउनलोड" else "Download")
+                }
             },
             dismissButton = {
                 if (!u.force) TextButton(onClick = { update = null }) { Text("Later") }

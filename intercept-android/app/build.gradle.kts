@@ -12,8 +12,15 @@ android {
         applicationId = "com.intercept"
         minSdk = 29
         targetSdk = 34
-        versionCode = 19
-        versionName = "0.5.3"
+        versionCode = 20
+        versionName = "0.5.4"
+
+        // WebRTC's jingle .so is 11–15 MB per ABI, and the x86 pair exists only
+        // for emulators. Shipping them cost ~27 MB on every download for phones
+        // that can never load them.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
     // Signing order: real upload key from env (Play, never committed) →
     // shared repo debug keystore (same signature on EVERY build, everywhere:
@@ -39,9 +46,23 @@ android {
     buildTypes {
         debug {
             signingConfig = signingConfigs.getByName("debug")
+            // Emulators are x86_64. Listed in full so this holds whether AGP
+            // merges these filters with defaultConfig or replaces them.
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+            }
         }
         release {
-            isMinifyEnabled = false
+            // The shrinker is the whole reason a Compose app fits in a download:
+            // it drops the thousands of unused extended icons, LiveKit's unused
+            // Java and every other class nothing reaches. See proguard-rules.pro
+            // for the kotlinx.serialization keeps it must not remove.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             val ks = System.getenv("INTERCEPT_KEYSTORE") ?: ""
             signingConfig = if (ks.isNotBlank()) signingConfigs.getByName("prod")
             else signingConfigs.getByName("debug")

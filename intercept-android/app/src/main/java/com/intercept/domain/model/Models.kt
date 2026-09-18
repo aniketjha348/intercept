@@ -1,5 +1,7 @@
 package com.intercept.domain.model
 
+import kotlinx.serialization.Serializable
+
 /** §10 risk levels + §23 domain models (CallSession / RiskState / AttackEvent / SecurityReport). */
 
 // No colour here on purpose: the ramp lives in presentation/theme/Color.kt, keyed
@@ -91,6 +93,21 @@ data class SecurityReport(
     val summary: String,
     val turns: Int,
     val transcript: List<ChatLine>,
+)
+
+/**
+ * One screened call, as this phone remembers it. Reports used to open on an
+ * empty "Session id" box — a value an owner has no way of knowing — so the
+ * history lives on the device and the report is one tap away.
+ */
+@Serializable
+data class CallRecord(
+    val sid: String,
+    val caller: String = "",
+    val risk: Int = 0,
+    val level: String = "LOW",
+    val action: String = "",
+    val at: Long = 0L,
 )
 
 /** In-app update feed entry (mirrors backend /app/latest). */

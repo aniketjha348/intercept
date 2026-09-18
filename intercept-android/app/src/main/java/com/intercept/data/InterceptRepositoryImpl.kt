@@ -20,10 +20,19 @@ import com.intercept.domain.repository.InterceptRepository
 class InterceptRepositoryImpl(
     private val api: InterceptApiService,
     private val lang: () -> String = { "auto" },
+    /** Reported the moment a session exists — mic, auto-answer and
+     *  tap-to-screen all come through here, so history cannot miss a call
+     *  because one call site forgot to record it. */
+    private val onCallStart: (String, String) -> Unit = { _, _ -> },
+    /** The final reading for that session, once the report exists. */
+    private val onCallEnd: (String, Int, String, String) -> Unit = { _, _, _, _ -> },
 ) : InterceptRepository {
 
-    override suspend fun startCall(caller: String, owner: String): String =
-        api.startCall(StartCallRequest(caller, language = lang(), ownerName = owner)).sessionId
+    override suspend fun startCall(caller: String, owner: String): String {
+        val sid = api.startCall(StartCallRequest(caller, language = lang(), ownerName = owner)).sessionId
+        if (sid.isNotBlank()) onCallStart(sid, caller)
+        return sid
+    }
 
     override suspend fun sendCallerTurn(sessionId: String, text: String): TurnResult {
         val r = api.sendTurn(sessionId, TurnRequest(text, language = lang()))
@@ -44,8 +53,11 @@ class InterceptRepositoryImpl(
         api.takeover(sessionId)
     }
 
-    override suspend fun endCall(sessionId: String): SecurityReport =
-        api.endCall(sessionId).report.toDomain()
+    override suspend fun endCall(sessionId: String): SecurityReport {
+        val report = api.endCall(sessionId).report.toDomain()
+        onCallEnd(sessionId, report.risk, report.level, report.action)
+        return report
+    }
 
     override suspend fun getReport(sessionId: String): SecurityReport =
         api.report(sessionId).toDomain()

@@ -170,6 +170,8 @@ class AutoScreenService : Service() {
             container.audio.enter()
         } catch (_: Exception) {
         }
+        // Audio mode and local routing for the whole call belong to
+        // InCallAudio (entered above); it saves and restores them itself.
         try {
             container.tts.setCallMode(true)
         } catch (_: Exception) {

@@ -15,12 +15,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -40,9 +40,12 @@ import androidx.navigation.NavController
 import com.intercept.di.AppContainer
 import com.intercept.domain.model.RiskLevel
 import com.intercept.domain.model.SecurityReport
+import com.intercept.presentation.components.ActionRow
+import com.intercept.presentation.components.InlineLoader
 import com.intercept.presentation.components.RiskMeter
 import com.intercept.presentation.components.SectionLabel
 import com.intercept.presentation.components.StatusDot
+import com.intercept.presentation.components.displayName
 import com.intercept.presentation.theme.Band
 import com.intercept.presentation.theme.Ink
 import com.intercept.presentation.theme.Machine
@@ -65,27 +68,41 @@ import kotlinx.coroutines.launch
 fun ReportsScreen(nav: NavController, container: AppContainer) {
     // rememberSaveable: a rotation must not drop the id you typed and swap the
     // report out for whatever session happened to run last.
+    val history = remember { container.callHistory() }
     var sid by rememberSaveable { mutableStateOf(container.lastSessionId.orEmpty()) }
     var report by remember { mutableStateOf<SecurityReport?>(null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // With calls to show, the id box is developer furniture and stays folded
+    // away; on a fresh install it is the only way in, so it shows itself.
+    var showIdField by rememberSaveable { mutableStateOf(history.isEmpty()) }
     val scope = rememberCoroutineScope()
 
-    fun load() {
-        if (sid.isBlank()) return
+    fun load(id: String = sid) {
+        val target = id.trim()
+        if (target.isBlank()) return
+        sid = target
         busy = true; error = null
         scope.launch {
             try {
-                report = container.repo.getReport(sid.trim())
-            } catch (e: Exception) {
-                error = "No report: ${e.message}"
+                report = container.repo.getReport(target)
+            } catch (_: Exception) {
+                // An exception's own words read like a system fault; a worried
+                // owner needs a sentence about their call, not an HTTP code.
+                error = "That report is not available right now. " +
+                    "If the call just ended, try again in a moment."
             } finally {
                 busy = false
             }
         }
     }
 
-    LaunchedEffect(Unit) { if (sid.isNotBlank()) load() }
+    // The call that just ended, or this phone's most recent one — opening
+    // Reports after a call should show that call, not an empty box.
+    LaunchedEffect(Unit) {
+        val first = container.lastSessionId ?: history.firstOrNull()?.sid
+        if (!first.isNullOrBlank()) load(first)
+    }
 
     Scaffold(
         containerColor = Paper,
@@ -103,22 +120,50 @@ fun ReportsScreen(nav: NavController, container: AppContainer) {
             Modifier.fillMaxSize().padding(pad).padding(horizontal = 20.dp),
         ) {
             Spacer(Modifier.height(8.dp))
-            TextField(
-                value = sid,
-                onValueChange = { sid = it },
-                label = { Text("Session id") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(10.dp))
-            Button(onClick = ::load, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                if (busy) CircularProgressIndicator() else Text("Load report")
+
+            if (history.isNotEmpty()) {
+                SectionLabel("Recent calls")
+                Spacer(Modifier.height(2.dp))
+                history.forEach { h ->
+                    val lvl = RiskLevel.of(h.level)
+                    ActionRow(
+                        title = h.caller.ifBlank { "Unknown caller" },
+                        subtitle = buildString {
+                            append(ago(h.at))
+                            append("  ·  ")
+                            append(lvl.displayName)
+                            if (h.risk > 0) append("  ·  risk ${h.risk}")
+                            if (h.action.isNotBlank()) append("  ·  ${h.action}")
+                        },
+                        onClick = { load(h.sid) },
+                        showRule = false,
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
             }
 
-            if (sid.isBlank() && report == null && error == null) {
+            if (showIdField) {
+                TextField(
+                    value = sid,
+                    onValueChange = { sid = it },
+                    label = { Text("Session id") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(10.dp))
+                Button(onClick = { load() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                    if (busy) InlineLoader() else Text("Load report")
+                }
+            } else {
+                TextButton(onClick = { showIdField = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Have a session id?", color = Muted)
+                }
+            }
+
+            if (history.isEmpty() && sid.isBlank() && report == null && error == null) {
                 Spacer(Modifier.height(20.dp))
                 Text(
-                    "No session yet — screen a call or run the demo first, then its report lands here.",
+                    "No calls yet. Once Intercept screens one, its report lands here on its own.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Muted,
                 )
@@ -239,6 +284,18 @@ fun ReportsScreen(nav: NavController, container: AppContainer) {
                 }
             }
         }
+    }
+}
+
+/** "2 min ago" — a person's sense of when, rather than a timestamp. */
+private fun ago(at: Long): String {
+    if (at <= 0L) return "earlier"
+    val mins = ((System.currentTimeMillis() - at) / 60_000L).coerceAtLeast(0L)
+    return when {
+        mins < 1 -> "just now"
+        mins < 60 -> "$mins min ago"
+        mins < 60 * 24 -> "${mins / 60} h ago"
+        else -> "${mins / (60 * 24)} d ago"
     }
 }
 

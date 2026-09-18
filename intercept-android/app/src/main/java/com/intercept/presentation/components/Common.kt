@@ -14,7 +14,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,6 +33,21 @@ import com.intercept.R
 import com.intercept.presentation.theme.Ink
 import com.intercept.presentation.theme.Muted
 import com.intercept.presentation.theme.Wire
+
+/**
+ * In-button progress. Material's default indicator is 40dp and pushes the
+ * button's height around the moment work starts; this keeps the row still and
+ * takes the button's own content colour, so it reads on filled and outlined
+ * buttons alike.
+ */
+@Composable
+fun InlineLoader(modifier: Modifier = Modifier) {
+    CircularProgressIndicator(
+        modifier = modifier.size(18.dp),
+        strokeWidth = 2.dp,
+        color = LocalContentColor.current,
+    )
+}
 
 /** A dotted status light. One dot, one meaning — never a coloured card. */
 @Composable

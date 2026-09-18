@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +52,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.intercept.di.AppContainer
 import com.intercept.service.AlwaysOnService
+import com.intercept.presentation.components.InlineLoader
 import com.intercept.presentation.components.SectionLabel
 import com.intercept.presentation.components.StatusDot
 import com.intercept.presentation.navigation.Routes
@@ -321,7 +321,7 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                     enabled = !testingBackend,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (testingBackend) CircularProgressIndicator() else Text("Test ${container.backendUrl}")
+                    if (testingBackend) InlineLoader() else Text("Test ${container.backendUrl}")
                 }
             }
 

@@ -21,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +46,7 @@ import androidx.navigation.NavController
 import com.intercept.di.AppContainer
 import com.intercept.domain.model.Analysis
 import com.intercept.domain.model.RiskLevel
+import com.intercept.presentation.components.InlineLoader
 import com.intercept.presentation.components.RiskMeter
 import com.intercept.presentation.components.SectionLabel
 import com.intercept.presentation.components.StatusDot
@@ -99,8 +99,8 @@ fun AnalyzeScreen(nav: NavController, container: AppContainer) {
                     "SCREENSHOT" -> container.repo.analyzeScreenshot(input.trim().ifEmpty { null }, imageB64)
                     else -> container.repo.analyzeText(input, tab)
                 }
-            } catch (e: Exception) {
-                error = "Backend unreachable: ${e.message}"
+            } catch (_: Exception) {
+                error = "Could not reach Intercept — check your connection and try again."
             } finally {
                 busy = false
             }
@@ -163,6 +163,11 @@ fun AnalyzeScreen(nav: NavController, container: AppContainer) {
                     ChoicePill(label = label, selected = tab == code) {
                         tab = code
                         result = null
+                        // An attachment belongs to the tab it was picked on.
+                        // Carrying it over sent an old screenshot to the QR
+                        // decoder, and left a hidden image deciding whether the
+                        // button looked ready on a tab that showed nothing.
+                        imageB64 = null
                     }
                 }
             }
@@ -186,16 +191,34 @@ fun AnalyzeScreen(nav: NavController, container: AppContainer) {
             if (tab == "SCREENSHOT" || tab == "QR") {
                 Spacer(Modifier.height(10.dp))
                 OutlinedButton(onClick = { picker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (imageB64 == null) "Attach image (OCR / QR decode)" else "Image attached (tap to change)")
+                    Text(if (imageB64 == null) "Attach a screenshot" else "Image attached (tap to change)")
+                }
+                if (imageB64 != null && input.isBlank()) {
+                    // Reading a picture needs OCR/QR support that this build does
+                    // not ship, so an image-only check can come back clean having
+                    // read nothing. Better to say so than to show a green verdict
+                    // the app never actually earned.
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Reading a picture is limited on this build — paste the message text above as well for a check you can trust.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Muted,
+                    )
                 }
             }
             Spacer(Modifier.height(12.dp))
+            // An image only counts where an image is actually read, so the button
+            // can never run a check on nothing and call it safe.
+            val hasInput = when (tab) {
+                "QR", "SCREENSHOT" -> input.isNotBlank() || imageB64 != null
+                else -> input.isNotBlank()
+            }
             Button(
                 onClick = { doAnalyze() },
-                enabled = !busy && (input.isNotBlank() || imageB64 != null),
+                enabled = !busy && hasInput,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                if (busy) CircularProgressIndicator() else Text("Analyze with Intercept")
+                if (busy) InlineLoader() else Text("Analyze with Intercept")
             }
 
             error?.let {
