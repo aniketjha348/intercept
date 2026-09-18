@@ -68,6 +68,7 @@ def transcript(session_id: str, turn: Turn):
                                      content=Content(text=turn.text)),
                        memory=sess.memory, user_memory=sess.scam_memory, language=lang)
         sess.last_result = res
+        sess.note_risk(res.risk_score)
         if lang == "auto":
             sess.language = res.language
         return {"risk": res.risk_score, "level": res.risk_level,
@@ -79,6 +80,7 @@ def transcript(session_id: str, turn: Turn):
                                  content=Content(text=turn.text)),
                    memory=sess.memory, user_memory=sess.scam_memory, language=lang)
     sess.last_result = res
+    sess.note_risk(res.risk_score)
     if lang == "auto":
         sess.language = res.language
     sess.transcript.append({"speaker": "intercept", "text": res.guardian_reply})
@@ -155,6 +157,11 @@ def live_sessions():
             "risk": last.risk_score if last else 0,
             "level": last.risk_level if last else "LOW",
             "turns": sess.memory.turns,
+            # Why, before the user even opens the call: the feed is the one
+            # place a glance has to answer "what does this person want?".
+            "objective": last.likely_objective if last else "",
+            "claimed_org": sess.memory.claimed_org,
+            "escalating": sess.escalating,
         })
     return {"live": out}
 

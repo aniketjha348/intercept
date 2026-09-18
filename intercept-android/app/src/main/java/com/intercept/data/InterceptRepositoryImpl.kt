@@ -95,7 +95,10 @@ class InterceptRepositoryImpl(
         (api.liveSessions()["live"] ?: emptyList()).map {
             com.intercept.domain.model.LiveSession(
                 it.sessionId, it.caller, it.risk,
-                com.intercept.domain.model.RiskLevel.of(it.level), it.turns)
+                com.intercept.domain.model.RiskLevel.of(it.level), it.turns,
+                objective = it.objective,
+                claimedOrg = it.claimedOrg,
+                escalating = it.escalating)
         }
     } catch (_: Exception) {
         emptyList()

@@ -17,16 +17,24 @@ LOGIN_HINTS = ["login", "signin", "verify", "kyc", "update", "secure", "account"
 def analyze_url(raw: str) -> tuple[list[Signal], dict]:
     """Return (signals, findings). Purely lexical unless ALLOW_NETWORK_FETCH=true."""
     url = (raw or "").strip()
-    if not url or "://" not in url and not url.startswith("upi://"):
+    if not url:
         return [], {"url": raw, "error": "not_a_url"}
     try:
         if url.startswith("upi://"):
             return [Signal(code="PAYMENT_REQUEST", category="PAYMENT", confidence=0.85,
                            evidence=f"UPI payment payload: {url[:120]}", weight=30,
                            origin="url_intel")], {"scheme": "upi", "url": url}
-        p = urlparse(url if "://" in url else "http://" + url)
+        # Messages carry scheme-less hosts constantly ("www.sbi-kyc.xyz/verify",
+        # "bit.ly/x") and those are exactly the links people tap — dropping them
+        # meant the URL engine was blind to the most common form of the attack.
+        # Assume http, but remember the scheme was absent so a bare domain is
+        # never reported as an insecure-http finding.
+        had_scheme = "://" in url
+        p = urlparse(url if had_scheme else "http://" + url)
         host = (p.hostname or "").lower()
         findings: dict = {"url": url, "host": host, "scheme": p.scheme}
+        if not had_scheme:
+            findings["scheme_assumed"] = "http"
         sigs: list[Signal] = []
         if not host:
             return [], findings
@@ -77,7 +85,7 @@ def analyze_url(raw: str) -> tuple[list[Signal], dict]:
         if any(h in path for h in LOGIN_HINTS):
             add("PHISHING_URL", 0.7, f"Credential-harvesting path hint: {p.path[:80]}", 20)
             findings["login_path"] = True
-        if p.scheme == "http":
+        if p.scheme == "http" and had_scheme:
             add("SUSPICIOUS_URL", 0.55, "Insecure http scheme on a sensitive-looking link", 10)
         # Optional defensive fetch: title/forms only, no credentials, short timeout.
         if cfg.ALLOW_NETWORK_FETCH and p.scheme in ("http", "https"):

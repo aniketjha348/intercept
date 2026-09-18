@@ -49,7 +49,11 @@ def analyze(inp: InterceptInput, memory: CallMemory | None = None,
     if inp.content.url:
         sigs, _ = analyze_url(inp.content.url)
         url_signals.extend(sigs)
-    if inp.channel == Channel.QR or inp.content.qr_text or inp.content.image_b64 and inp.channel == Channel.QR:
+    # Decode when a QR payload was supplied (any channel), or when the request
+    # IS a QR decode with an image. The old `A or B or C and D` meant every QR
+    # request ran the decoder with whatever text it had — treating context text
+    # as if it were a scanned code.
+    if inp.content.qr_text or (inp.channel == Channel.QR and inp.content.image_b64):
         sigs, _ = analyze_qr(inp.content.image_b64, inp.content.qr_text or text)
         url_signals.extend(sigs)
     intel = threat_intel.lookup(inp.source.identifier or "", inp.channel.value)

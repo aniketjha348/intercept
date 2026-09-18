@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from app.db.repository import REPO
 from app.pipeline import analyze
 from app.realtime.sessions import MANAGER
 from app.schemas import Channel, Content, InterceptInput, Source
@@ -20,6 +21,9 @@ async def call_socket(ws: WebSocket, session_id: str):
     sess = MANAGER.get(session_id)
     if sess is None:
         sess = MANAGER.create(session_id, "unknown")
+        # A session born on the socket still needs its row, or the transcript
+        # inserts below fail the foreign key and vanish silently.
+        REPO.ensure_session(session_id, sess.caller)
     await ws.send_json(_ev("CALL_STARTED", session_id, caller=sess.caller))
     try:
         while True:
@@ -42,8 +46,16 @@ async def call_socket(ws: WebSocket, session_id: str):
                     content=Content(text=text)), memory=sess.memory,
                     user_memory=sess.scam_memory, language=lang)
                 sess.last_result = result
+                sess.note_risk(result.risk_score)
                 sess.language = result.language
                 sess.transcript.append({"speaker": "intercept", "text": result.guardian_reply})
+                # Same persistence as the REST turn path: a call screened over
+                # the realtime socket must leave the same audit trail, or the
+                # report quietly differs depending on which transport won.
+                REPO.save_transcript(session_id, "caller", text)
+                REPO.save_transcript(session_id, "intercept", result.guardian_reply)
+                REPO.add_events(session_id, [e.model_dump() for e in result.events])
+                REPO.touch_session_risk(session_id, result.risk_score, result.risk_level)
                 for s in result.signals:
                     await ws.send_json(_ev("SIGNAL_DETECTED", session_id,
                                            code=s.code, category=s.category,

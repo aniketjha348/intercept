@@ -26,12 +26,24 @@ class LatestOut(BaseModel):
     notes_hi: list[str] = []
 
 
-@lru_cache(maxsize=1)
-def _updates() -> list[dict]:
+@lru_cache(maxsize=4)
+def _read_updates(path: str, mtime: float, size: int) -> list[dict]:
     try:
-        return json.loads(_UPDATES_FILE.read_text(encoding="utf-8"))
+        return json.loads(Path(path).read_text(encoding="utf-8"))
     except Exception:
         return []
+
+
+def _updates() -> list[dict]:
+    """Keyed on the file's mtime+size instead of cached forever: the release
+    automation rewrites updates.json and the in-app updater reads this endpoint,
+    so a changelog that only appears after a process restart would mean users
+    are never told about the build they can already install."""
+    try:
+        st = _UPDATES_FILE.stat()
+        return _read_updates(str(_UPDATES_FILE), st.st_mtime, st.st_size)
+    except Exception:
+        return _read_updates(str(_UPDATES_FILE), 0.0, 0)
 
 
 @router.get("/updates")

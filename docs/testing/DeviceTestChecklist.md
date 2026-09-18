@@ -277,6 +277,43 @@ daemon losing its own notification. Check with step C1's command.
 
 ---
 
+## 4b. Path D — Call handling (telecom audit fixes)
+
+Findings 5 and 6 in [docs/AUDIT.md](../AUDIT.md) can only be judged on a device with a
+SIM and a second phone to call from.
+
+### D1 — Every call gets a screen
+- [ ] App is the default Phone app; call from an unknown number and from a contact,
+      with auto-answer both ON and OFF
+- [ ] Each time you see something: either the live screening transcript or the in-call
+      controls
+
+**Expected:** never a connected call with no screen. Previously a call we *claimed*
+for auto-answer but did not answer (no longer ringing, or not in our call set) returned
+"handled" and suppressed the in-call UI — the user was left holding an invisible call.
+
+### D2 — No dialer role must not mean no protection
+- [ ] Keep auto-answer **ON**, then take away the default-Phone role
+      (Settings → Apps → Default apps → Phone → pick another dialer)
+- [ ] Call from an unknown number
+- [ ] The call rings normally **and** the "Unknown caller silenced / tap to screen"
+      notification appears
+
+**Expected:** the prompt appears. Without the dialer role `InterceptInCallService` never
+fires, so before this fix the auto path returned early and you got neither auto-answer nor
+the tap prompt — protection silently doing nothing.
+
+### D3 — The tap still screens the call
+- [ ] Tap the notification → Incoming call screen appears
+- [ ] Tap **Let Intercept answer**
+- [ ] The app answers on speaker and the live transcript starts
+
+**Expected:** it answers and screens. This step is also *why* the call is left ringing on
+purpose: the old comment claimed unknown callers are silenced, but disallowing the call
+would make this tap impossible.
+
+---
+
 ## 5. What this checklist cannot prove
 
 - **That the APK compiles.** There is no Gradle wrapper or Android SDK in this

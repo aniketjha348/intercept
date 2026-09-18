@@ -57,22 +57,25 @@ class InterceptInCallService : InCallService() {
             false
         }
         if (!auto) return false
+        // Only claim the call when we actually answered it. Previously this
+        // returned true even when it did nothing (call no longer ringing, or not
+        // in our set) — and onCallAdded reads true as "don't show the in-call
+        // UI", so the user was left holding a connected call with no controls.
+        if (call.state != Call.STATE_RINGING || !calls.contains(call)) return false
         // Answer immediately - no delay! The previous 1.5s delay caused race conditions
         // where the system would timeout or user would interact before answer completed.
-        try {
-            if (call.state == Call.STATE_RINGING && calls.contains(call)) {
-                call.answer(0)
-                setAudioRoute(CallAudioState.ROUTE_SPEAKER)
-                try {
-                    applicationContext.appContainer().pendingIncomingCaller = number
-                } catch (_: Exception) {
-                }
-                AutoScreenService.screenCall(applicationContext, number)
+        return try {
+            call.answer(0)
+            setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+            try {
+                applicationContext.appContainer().pendingIncomingCaller = number
+            } catch (_: Exception) {
             }
+            AutoScreenService.screenCall(applicationContext, number)
+            true
         } catch (_: Exception) {
-            return false
+            false
         }
-        return true
     }
 
     override fun onCallRemoved(call: Call) {

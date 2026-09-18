@@ -114,6 +114,9 @@ data class LiveSessionDto(
     val risk: Int = 0,
     val level: String = "LOW",
     val turns: Int = 0,
+    val objective: String = "",
+    @SerialName("claimed_org") val claimedOrg: String = "",
+    val escalating: Boolean = false,
 )
 
 @Serializable

@@ -170,5 +170,9 @@ class CallerStt(context: Context, private val appLang: () -> String = { "auto" }
         recognizer = null
         onFinal = null
         onPartial = null
+        // Also drop these: they close over the ViewModel, and a stopped
+        // recognizer held for the rest of the session kept it reachable.
+        onStopped = null
+        onReady = null
     }
 }

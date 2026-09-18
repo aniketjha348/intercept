@@ -196,9 +196,19 @@ fun HomeScreen(nav: NavController, container: AppContainer) {
                 Spacer(Modifier.height(32.dp))
                 SectionLabel("Live now")
                 live.forEach { s ->
+                    val ask = listOfNotNull(
+                        s.claimedOrg.takeIf { it.isNotBlank() && !it.equals("Unknown", true) }
+                            ?.let { "claims $it" },
+                        s.objective.takeIf { it.isNotBlank() && !it.equals("Unknown", true) },
+                    ).joinToString(" • ")
                     ActionRow(
                         title = "AI is screening ${s.caller}",
-                        subtitle = "Risk ${s.risk} • ${s.level.label} • ${s.turns} turns — tap to watch",
+                        // What they want, and whether it is getting worse — the
+                        // two things a glance has to answer before you tap in.
+                        subtitle = (if (s.escalating) "Escalating — " else "") +
+                            "Risk ${s.risk} • ${s.level.label} • ${s.turns} turns" +
+                            (if (ask.isNotEmpty()) " • $ask" else "") +
+                            " — tap to watch",
                         onClick = {
                             // Silent watch: the agent keeps the call, we only look.
                             container.watchOnlySid = s.sessionId

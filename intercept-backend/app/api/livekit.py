@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from app import core_config as cfg
+from app.realtime.sessions import MANAGER
 
 router = APIRouter(prefix="/livekit", tags=["livekit"])
 
@@ -45,6 +46,14 @@ def token(identity: str = Query(default="judge", max_length=64),
     wanted = (room or "").strip()
     if wanted and not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", wanted):
         raise HTTPException(422, "bad room name")
+    # A token for a call's room is microphone access to that call. App rooms are
+    # named after their session, so only mint one for a session that exists and
+    # is still being screened: a stale or guessed id must not walk into a live
+    # conversation. (Random rooms for the public demo are unaffected.)
+    if wanted.startswith("intercept-"):
+        sess = MANAGER.get(wanted[len("intercept-"):])
+        if sess is None or not sess.active:
+            raise HTTPException(404, "call session not found or ended")
     room_name = wanted or f"intercept-{_secrets.token_hex(4)}"
     tk = (lk.AccessToken(cfg.LIVEKIT_KEY, cfg.LIVEKIT_SECRET)
           .with_identity(ident)
@@ -62,6 +71,9 @@ async def dispatch(body: DispatchIn):
     room = (body.room or "").strip()[:128]
     if not room:
         raise HTTPException(422, "room required")
+    # Same validation as /token: rooms turn into path parts downstream.
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", room):
+        raise HTTPException(422, "bad room name")
     try:
         from livekit import api as lk
         client = lk.LiveKitAPI(cfg.LIVEKIT_URL, cfg.LIVEKIT_KEY, cfg.LIVEKIT_SECRET)

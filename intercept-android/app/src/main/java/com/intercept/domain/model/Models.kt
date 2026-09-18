@@ -31,6 +31,10 @@ data class LiveSession(
     val risk: Int,
     val level: RiskLevel,
     val turns: Int,
+    val objective: String = "",
+    val claimedOrg: String = "",
+    /** Risk climbing turn over turn — a scam escalates on purpose. */
+    val escalating: Boolean = false,
 )
 
 data class LiveKitToken(val url: String, val room: String, val token: String)

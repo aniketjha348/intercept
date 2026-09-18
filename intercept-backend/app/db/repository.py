@@ -14,6 +14,28 @@ def scrub_secrets(text: str) -> str:
     return _SCRUB_RE.sub("••••", text or "")
 
 
+def scrub_report(report: dict) -> dict:
+    """The report quotes the caller, so it needs the same digit-run scrub as the
+    transcript rows. Without this the SecurityReport row was the back door that
+    stored the very OTP we promise never to keep. The in-memory copy stays
+    unscrubbed so a live session can still read what was actually said."""
+    out = dict(report or {})
+    turns = out.get("transcript")
+    if isinstance(turns, list):
+        out["transcript"] = [
+            {**t, "text": scrub_secrets(str(t.get("text") or ""))}
+            if isinstance(t, dict) else t
+            for t in turns
+        ]
+    for key in ("summary", "action", "claimed_org"):
+        if isinstance(out.get(key), str):
+            out[key] = scrub_secrets(out[key])
+    why = out.get("why")
+    if isinstance(why, list):
+        out["why"] = [scrub_secrets(w) if isinstance(w, str) else w for w in why]
+    return out
+
+
 class Repository:
     def __init__(self) -> None:
         self.reports: dict[str, dict] = {}
@@ -125,9 +147,10 @@ class Repository:
             from sqlalchemy.dialects.postgresql import insert
             eng = get_engine()
             with eng.begin() as c:
+                stored = scrub_report(report)
                 c.execute(insert(models.SecurityReport).values(
-                    session_id=session_id, report=report).on_conflict_do_update(
-                        index_elements=["session_id"], set_={"report": report}))
+                    session_id=session_id, report=stored).on_conflict_do_update(
+                        index_elements=["session_id"], set_={"report": stored}))
         except Exception:
             pass
 

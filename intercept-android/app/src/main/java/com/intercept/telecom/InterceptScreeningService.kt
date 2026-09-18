@@ -7,16 +7,19 @@ import android.content.Intent
 import android.os.Build
 import android.telecom.Call
 import android.telecom.CallScreeningService
+import android.telecom.TelecomManager
 import androidx.core.app.NotificationCompat
 import com.intercept.MainActivity
 import com.intercept.appContainer
 
 /**
- * Channel Gateway on-device (§2): unknown callers are silenced here when
- * auto-answer is disabled, and the user gets one tap to let the AI answer.
- * When auto-answer is enabled + default dialer role held, calls are allowed
- * through for InterceptInCallService to handle immediately.
- * Full auto-answer requires both ROLE_CALL_SCREENING and ROLE_DIALER.
+ * Channel Gateway on-device (§2): unknown callers ring through with a one-tap
+ * "let the AI screen this" prompt when auto-answer is off, and are handed to
+ * InterceptInCallService when it is on.
+ *
+ * The call is never disallowed on purpose: the tap-to-screen flow needs the
+ * call still alive for the user to answer. Full auto-answer requires BOTH the
+ * ROLE_CALL_SCREENING and the ROLE_DIALER role.
  */
 class InterceptScreeningService : CallScreeningService() {
 
@@ -34,34 +37,36 @@ class InterceptScreeningService : CallScreeningService() {
             return
         }
 
-        // Check if auto-answer is enabled and caller is unknown
+        // Auto-answer is only real when we hold the dialer role. Without it
+        // InterceptInCallService never fires, so claiming the auto path left the
+        // call ringing with no auto-answer AND no tap-to-screen prompt — the one
+        // outcome where protection silently does nothing.
+        val isDialer = try {
+            getSystemService(TelecomManager::class.java)?.defaultDialerPackage == packageName
+        } catch (_: Exception) {
+            false
+        }
         val shouldAutoAnswer = try {
-            container.setupDone && container.autoCalls &&
+            container.setupDone && container.autoCalls && isDialer &&
                 ContactHelper.isUnknown(applicationContext, number)
         } catch (_: Exception) {
             false
         }
 
-        if (shouldAutoAnswer) {
-            // Allow the call and let InterceptInCallService handle auto-answer.
-            // (No allow-flag exists: a response WITHOUT disallow/reject IS allow.)
-            val response = CallResponse.Builder()
-                .setSkipCallLog(false)
-                .setSkipNotification(false)
-                .build()
-            respondToCall(callDetails, response)
-            // InterceptInCallService will detect this call and handle auto-answer
-            return
-        }
-
-        // Non-auto path: silence unknown callers, show notification for user to tap
+        // Either way the call is allowed through. (No allow-flag exists: a
+        // response WITHOUT disallow/reject IS allow.)
         val response = CallResponse.Builder()
             .setSkipCallLog(false)
             .setSkipNotification(false)
             .build()
         respondToCall(callDetails, response)
 
-        applicationContext.appContainer().pendingIncomingCaller = number
+        if (shouldAutoAnswer) {
+            // InterceptInCallService detects this call and answers on speaker.
+            return
+        }
+
+        container.pendingIncomingCaller = number
         showScreeningNotification(number)
     }
 

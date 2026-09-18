@@ -7,6 +7,14 @@ from pydantic import BaseModel
 router = APIRouter(prefix="/users", tags=["users"])
 _TRUSTED: set[str] = set()
 _BLOCKED: set[str] = set()
+# Unauthenticated endpoint, module-level state: bound it so a scripted flood
+# cannot grow these sets without limit.
+_MAX_LIST = 5000
+
+
+def _cap(items: set[str]) -> None:
+    while len(items) > _MAX_LIST:
+        items.pop()
 
 
 class Contact(BaseModel):
@@ -29,12 +37,14 @@ def register(d: Device):
 @router.post("/trusted")
 def add_trusted(c: Contact):
     _TRUSTED.add(c.identifier)
+    _cap(_TRUSTED)
     return {"trusted": sorted(_TRUSTED)}
 
 
 @router.post("/blocked")
 def add_blocked(c: Contact):
     _BLOCKED.add(c.identifier)
+    _cap(_BLOCKED)
     return {"blocked": sorted(_BLOCKED)}
 
 

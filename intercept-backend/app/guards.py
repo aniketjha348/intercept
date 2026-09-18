@@ -15,8 +15,17 @@ from fastapi.responses import JSONResponse
 MAX_BODY_BYTES = 2 * 1024 * 1024  # screenshots/QR as base64 stay well under this
 WINDOW_SECONDS = 60.0
 MAX_REQUESTS_PER_MINUTE = 240
+# One deque per client IP, forever, is a memory leak any stranger can drive on
+# a public endpoint — so the table is pruned back to the active window.
+MAX_TRACKED_CLIENTS = 5000
 
 _hits: dict[str, deque] = defaultdict(deque)
+
+
+def _prune(now: float) -> None:
+    """Drop clients that have not been seen inside the window."""
+    for k in [k for k, w in _hits.items() if not w or now - w[-1] > WINDOW_SECONDS]:
+        _hits.pop(k, None)
 
 
 async def guard(request: Request, call_next):
@@ -37,4 +46,6 @@ async def guard(request: Request, call_next):
         if len(window) >= MAX_REQUESTS_PER_MINUTE:
             return JSONResponse({"detail": "too many requests, slow down"}, status_code=429)
         window.append(now)
+        if len(_hits) > MAX_TRACKED_CLIENTS:
+            _prune(now)
     return await call_next(request)
