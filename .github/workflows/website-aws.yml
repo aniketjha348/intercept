@@ -35,7 +35,12 @@ jobs:
         run: sed -i "s|https://YOUR-API-URL|${API_URL}|g" intercept-website/site.js intercept-website/index.html
 
       - name: Sync to S3
-        run: aws s3 sync intercept-website/ "s3://${S3_BUCKET}/" --delete --exclude ".git*"
+        # Pages + feeds must never cache (else users keep seeing the old
+        # version/download link); fonts are fingerprinted-rare so they cache long.
+        run: >
+          aws s3 sync intercept-website/ "s3://${S3_BUCKET}/" --delete
+          --exclude ".git*" --exclude "fonts/*"
+          --cache-control "no-cache"
 
       # aws s3 sync takes Content-Type from Python's mimetypes, which does not
       # know .woff2 — it would land as binary/octet-stream and browsers may
