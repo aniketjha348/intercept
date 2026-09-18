@@ -1,8 +1,15 @@
 # Intercept AI voice agent (hackathon: live calls that wow judges)
 
-Python stack (Kotlin + Python only — no Node): Gemini Live voice +
-**our production risk engine** as the detection brain (every caller turn hits
-`/analyze/text` — Hindi/Hinglish/English, OTP traps, bank impersonation).
+Python stack (Kotlin + Python only — no Node): **LiveKit** carries the audio,
+**Gemini native-audio** is the voice *and* the brain (speech in, speech out —
+no text round-trip, so tone and barge-in survive, like ChatGPT's advanced
+voice). Every caller turn also hits **our production risk engine**
+(`/analyze/text` — Hindi/Hinglish/English, OTP traps, bank impersonation).
+
+The agent is written to sound like a person, not a phone tree: it matches the
+caller's language and register on the fly, reacts before it answers, varies its
+wording, and stops mid-sentence when interrupted. Personality lives in
+`system_prompt()`; the voice is `LIVE_VOICE` (default `Aoede`).
 
 ## Run it (5 min, demo laptop)
 

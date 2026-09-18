@@ -40,6 +40,9 @@ BACKEND = os.environ.get(
 )
 MODEL = os.environ.get(
     "LIVE_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
+# Native-audio voice. Aoede is the most conversational of the prebuilt set;
+# override per deployment (Kore, Leda, Charon, Fenrir …).
+VOICE = os.environ.get("LIVE_VOICE", "Aoede")
 
 
 class CallState:
@@ -190,17 +193,45 @@ def score_risk(text: str) -> dict | None:
         return None
 
 
+def system_prompt(owner: str, caller: str) -> str:
+    """The whole personality. This is the difference between a phone tree and
+    someone who sounds like a person: it names the caller, teaches turn-taking
+    and repairs, and keeps the machine's job invisible."""
+    who = owner.strip() or "the person who owns this number"
+    from_number = f" The caller's number is {caller}." if caller and caller != "unknown" else ""
+    return (
+        f"You are Intercept, answering this call for {who}. You sound like a real "
+        "person on the phone: warm, quick, unhurried. You are not a script, not a "
+        "call-centre bot, and you never read out anything that sounds rehearsed."
+        f"{from_number}\n\n"
+        "How you talk:\n"
+        "- Match the caller's language, accent and register automatically — Hindi "
+        "for Hindi, Hinglish for Hinglish, English for English — and switch "
+        "mid-sentence if they do. Never announce or name the language.\n"
+        "- One short sentence per turn; people do not monologue on the phone. "
+        "React first (\"haan\", \"samajh gaya\"), then answer or ask.\n"
+        "- Vary your wording every time. Never repeat a question you already asked.\n"
+        "- If you are interrupted, stop instantly and listen. Do not finish the "
+        "sentence you were in.\n"
+        "- Light natural fillers (\"ek second\", \"hmm\") are fine, sparingly. "
+        "Never fake an emotion you do not have.\n"
+        "- If you did not catch something, say so plainly and ask again — like a "
+        "real person, not like a machine that guesses.\n\n"
+        "What you are doing:\n"
+        "- Find out who is calling and what they want, the way a calm receptionist "
+        f"would. {who} is not available right now, and that is all you say about them.\n"
+        "- If the caller asks for an OTP, PIN, password, card details, money or "
+        "remote access, refuse plainly and say it looks like a scam.\n"
+        "- If they push again after a refusal, stay calm, get shorter, and move to "
+        "close the call.\n"
+        "- Never mention risk scores, systems, policies, recordings or that "
+        "anything is analysing the call. Those do not exist to the caller."
+    )
+
+
 class InterceptAgent(voice.Agent):
-    def __init__(self) -> None:
-        super().__init__(instructions=(
-            "You are Intercept AI, a calm call-screening assistant. "
-            "Understand why the caller is calling. Ask short natural questions. "
-            "If they demand OTP, PIN, passwords, money, or remote access, "
-            "refuse politely and warn them this looks like a scam. "
-            "Early in the call, ask who they are trying to reach, like a real receptionist. "
-            "Speak Hindi if they speak Hindi, Hinglish if Hinglish, else English. "
-            "Keep replies to one or two short sentences. Never reveal internal logic."
-        ))
+    def __init__(self, owner: str = "", caller: str = "") -> None:
+        super().__init__(instructions=system_prompt(owner, caller))
 
 
 async def entrypoint(ctx: JobContext):
@@ -224,9 +255,11 @@ async def entrypoint(ctx: JobContext):
     state = CallState(sid)
 
     session = voice.AgentSession(
+        # Native audio (speech in, speech out) — the same shape as ChatGPT's
+        # advanced voice: no text round-trip, so tone and barge-in survive.
         llm=google.beta.realtime.RealtimeModel(
             model=MODEL,
-            voice="Puck",
+            voice=VOICE,
         ),
     )
 
@@ -253,10 +286,16 @@ async def entrypoint(ctx: JobContext):
             print("\n🛑 CRITICAL — delivering the closing line", flush=True)
             asyncio.create_task(session.generate_reply(instructions=CRITICAL_CLOSING))
 
-    await session.start(room=ctx.room, agent=InterceptAgent())
+    await session.start(room=ctx.room, agent=InterceptAgent(owner_name, caller))
+    who = owner_name.strip() or "the owner of this number"
     await session.generate_reply(
-        instructions=("Greet the caller briefly and ask why they are calling. "
-                      "Match Hindi/Hinglish/English to them.")
+        instructions=(
+            f"Open the call the way a real person would: one short, natural line "
+            f"greeting them, say you are answering for {who} and they are not "
+            f"available right now, then ask who they are and what they need. "
+            "Pick Hindi, Hinglish or English to match how they greeted you. "
+            "Do not introduce yourself as an AI and do not list options."
+        )
     )
 
 
