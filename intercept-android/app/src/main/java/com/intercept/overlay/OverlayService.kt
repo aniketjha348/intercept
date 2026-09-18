@@ -6,7 +6,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
@@ -22,12 +24,44 @@ import com.intercept.appContainer
  * Floating Intercept bubble over any app (chat-head style). Honest scope:
  * it CANNOT read chat text (no accessibility snooping by design) — it is a
  * one-tap remote: protection status, jump to Analyze, jump to Reports.
- * Detection itself stays automatic (SMS receiver + notification listener).
+ * Detection itself stays automatic (SMS receiver + notification listener), and
+ * when a threat lands the bubble also carries the warning banner over whatever
+ * the user is doing, so the warning arrives before the tap does.
  * User-toggled, movable, closable. Needs SYSTEM_ALERT_WINDOW (asked once).
  */
 class OverlayService : Service() {
 
     companion object {
+        private const val BANNER_MS = 9000L
+        private const val ACTION_FLASH = "com.intercept.action.FLASH"
+
+        /**
+         * Threat banner over whatever the user is looking at.
+         *
+         * Deliberately an in-process call and not startService(): a notification
+         * listener callback can arrive while the app is backgrounded, and
+         * Android 12+ bans starting a background service from there. When the
+         * bubble is running we already share a process, so we just talk to it.
+         * When it is not, the high-priority alert notification still fires and
+         * AlwaysOnService puts the bubble back within a minute.
+         */
+        fun flash(heading: String, body: String, link: String? = null) {
+            try {
+                live?.showBanner(heading, body, link)
+            } catch (_: Exception) {
+            }
+        }
+
+        @Volatile
+        private var live: OverlayService? = null
+
+        /** Survives tab switches; shown in the panel so a missed banner is not lost. */
+        @Volatile
+        private var lastHeading: String? = null
+
+        @Volatile
+        private var lastLink: String? = null
+
         /**
          * MIUI runs a SECOND, undocumented gate ("Display pop-up windows while
          * running in the background", default OFF) that canDrawOverlays()
@@ -83,6 +117,8 @@ class OverlayService : Service() {
     private var wm: WindowManager? = null
     private var bubble: View? = null
     private var panel: View? = null
+    private var banner: View? = null
+    private val handler = Handler(Looper.getMainLooper())
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -96,6 +132,7 @@ class OverlayService : Service() {
             stopSelf()
             return
         }
+        live = this
         showBubble()
     }
 
@@ -108,9 +145,16 @@ class OverlayService : Service() {
             panel?.let { wm?.removeView(it) }
         } catch (_: Exception) {
         }
+        try {
+            banner?.let { wm?.removeView(it) }
+        } catch (_: Exception) {
+        }
         bubble = null
         panel = null
+        banner = null
         wm = null
+        if (live === this) live = null
+        handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 
@@ -195,6 +239,68 @@ class OverlayService : Service() {
         }
     }
 
+    /**
+     * The warning that beats the tap: a card over the current app the moment a
+     * risky link is seen, tappable straight into Analyze with that exact URL.
+     */
+    private fun showBanner(heading: String, body: String, link: String?) {
+        val wm = wm ?: return
+        lastHeading = heading
+        lastLink = link
+        handler.post {
+            try {
+                banner?.let { wm.removeView(it) }
+                banner = null
+                val box = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setBackgroundColor(0xF214181D.toInt())
+                    setPadding(dp(16), dp(14), dp(16), dp(14))
+                }
+                box.addView(TextView(this).apply {
+                    text = heading
+                    textSize = 15f
+                    setTextColor(0xFFFFD7A8.toInt())
+                })
+                if (body.isNotBlank()) {
+                    box.addView(TextView(this).apply {
+                        text = body
+                        textSize = 13f
+                        setTextColor(0xFFFFFFFF.toInt())
+                        setPadding(0, dp(4), 0, 0)
+                    })
+                }
+                box.addView(TextView(this).apply {
+                    text = if (link != null) "Tap to check this link" else "Tap to see why"
+                    textSize = 13f
+                    setTextColor(0xFF7CC7FF.toInt())
+                    setPadding(0, dp(8), 0, 0)
+                })
+                box.setOnClickListener {
+                    if (link != null) {
+                        try {
+                            applicationContext.appContainer().pendingSharedText = link
+                        } catch (_: Exception) {
+                        }
+                    }
+                    openApp(analyze = true)
+                }
+                val params = overlayParams(dp(12), dp(40), dp(320), WindowManager.LayoutParams.WRAP_CONTENT)
+                wm.addView(box, params)
+                banner = box
+                handler.postDelayed({ removeBanner() }, BANNER_MS)
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private fun removeBanner() {
+        try {
+            banner?.let { wm?.removeView(it) }
+        } catch (_: Exception) {
+        }
+        banner = null
+    }
+
     private fun togglePanel() {
         if (panel != null) {
             try {
@@ -227,6 +333,26 @@ class OverlayService : Service() {
             setTextColor(0xFF16191E.toInt())
         }
         box.addView(status)
+        // A banner that faded before the user looked is not lost — the panel
+        // keeps the last verdict, with the link still one tap from a check.
+        lastHeading?.let { heading ->
+            box.addView(TextView(this).apply {
+                text = heading
+                textSize = 13f
+                setTextColor(0xFFC1121F.toInt())
+                setPadding(0, dp(8), 0, 0)
+            })
+            val link = lastLink
+            box.addView(actionButton(if (link != null) "Check that link" else "See why") {
+                if (link != null) {
+                    try {
+                        c.pendingSharedText = link
+                    } catch (_: Exception) {
+                    }
+                }
+                openApp(analyze = true)
+            })
+        }
         box.addView(actionButton("Analyze a message") { openApp(analyze = true) })
         box.addView(actionButton("View security report") { openApp(analyze = false) })
         box.addView(actionButton("Hide bubble") {

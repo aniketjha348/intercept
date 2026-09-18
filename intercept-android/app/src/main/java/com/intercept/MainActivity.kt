@@ -62,6 +62,14 @@ class MainActivity : ComponentActivity() {
         } catch (_: Exception) {
         }
 
+        // Auto-protect daemon: match the running service to the user's switches.
+        // Started from a foreground entry point on purpose — a background start
+        // is banned on Android 12+, so it never happens from Application.onCreate.
+        try {
+            com.intercept.service.AlwaysOnService.sync(this)
+        } catch (_: Exception) {
+        }
+
         // Check if this is an auto-screened call (headless path)
         val caller = try {
             AutoScreenService.activeCallNumber ?: intent?.getStringExtra(EXTRA_CALL_NUMBER)

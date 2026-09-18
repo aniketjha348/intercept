@@ -16,6 +16,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <!-- Always-on protection: the daemon is not call- or mic-shaped, so it
+         declares the explicit special-use type Android 14 demands. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Re-arm protection after a reboot: until the next restart is not protection. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Caller voice → on-device/Google STT mic input for live screening -->
@@ -82,16 +87,43 @@
             </intent-filter>
         </service>
 
-        <!-- Floating bubble over any app (user-toggled quick actions). -->
+        <!-- Floating bubble over any app (user-toggled quick actions).
+             stopWithTask=false: the bubble survives a swipe-off from Recents. -->
         <service
             android:name=".overlay.OverlayService"
-            android:exported="false" />
+            android:exported="false"
+            android:stopWithTask="false" />
 
         <!-- Headless auto-protect: screens calls + SMS with zero taps after setup. -->
         <service
             android:name=".service.AutoScreenService"
             android:exported="false"
             android:foregroundServiceType="microphone|phoneCall" />
+
+        <!-- Always-on daemon: keeps the process (and therefore the notification
+             listener + bubble) alive after the app leaves Recents.
+             stopWithTask=false is the switch that makes the swipe-back not kill
+             us; START_STICKY + BootReceiver cover reboots and OS reclaims. -->
+        <service
+            android:name=".service.AlwaysOnService"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="call, message and link protection must stay armed while the app is closed" />
+        </service>
+
+        <!-- Reboot / in-app update → re-arm what the user left switched on. -->
+        <receiver
+            android:name=".boot.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Zero-paste net: scans WhatsApp/Telegram message notifications. -->
         <service

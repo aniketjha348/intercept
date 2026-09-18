@@ -52,6 +52,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.intercept.di.AppContainer
+import com.intercept.service.AlwaysOnService
 import com.intercept.presentation.components.SectionLabel
 import com.intercept.presentation.components.StatusDot
 import com.intercept.presentation.navigation.Routes
@@ -403,12 +404,15 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
             ) {
                 SwitchRow("Auto-answer unknown calls", autoCalls) {
                     autoCalls = it; container.autoCalls = it; tick++
+                    AlwaysOnService.sync(ctx)
                 }
                 SwitchRow("Auto-scan stranger SMS", autoSms) {
                     autoSms = it; container.autoSms = it; tick++
+                    AlwaysOnService.sync(ctx)
                 }
                 SwitchRow("Auto-scan app messages", autoApps) {
                     autoApps = it; container.autoApps = it; tick++
+                    AlwaysOnService.sync(ctx)
                 }
             }
 

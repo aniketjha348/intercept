@@ -105,6 +105,7 @@ import com.intercept.presentation.theme.Ink
 import com.intercept.presentation.theme.Machine
 
 import com.intercept.overlay.OverlayService
+import com.intercept.service.AlwaysOnService
 
 import com.intercept.presentation.theme.Muted
 
@@ -420,7 +421,7 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
 
                 checked = autoCalls,
 
-            ) { autoCalls = it; container.autoCalls = it }
+            ) { autoCalls = it; container.autoCalls = it; AlwaysOnService.sync(ctx) }
 
             SwitchRow(
 
@@ -430,7 +431,7 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
 
                 checked = autoSms,
 
-            ) { autoSms = it; container.autoSms = it }
+            ) { autoSms = it; container.autoSms = it; AlwaysOnService.sync(ctx) }
 
             SwitchRow(
 
@@ -440,7 +441,7 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
 
                 checked = autoApps,
 
-            ) { autoApps = it; container.autoApps = it }
+            ) { autoApps = it; container.autoApps = it; AlwaysOnService.sync(ctx) }
 
             SwitchRow(
 
