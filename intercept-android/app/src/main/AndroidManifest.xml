@@ -45,6 +45,15 @@
                 <action android:name="android.intent.action.DIAL" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <!-- REQUIRED by AOSP DefaultDialerManager: the DIAL filter must ALSO
+                 exist for the tel: scheme, in its OWN filter (mixing data into
+                 the one above would break empty-scheme matching). Without this
+                 the app never appears in Default apps → Dial. -->
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="tel" />
+            </intent-filter>
             <!-- Share-sheet target: any app's Share → INTERCEPT auto-verifies the link/text. -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
