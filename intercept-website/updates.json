@@ -116,5 +116,23 @@
       "Is version me taze fixes aur sudhaar",
       "App kholte hi update mil jayega"
     ]
+  },
+  {
+    "version_code": 8,
+    "version_name": "0.4.1",
+    "date": "2026-09-18",
+    "force": false,
+    "apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk",
+    "notes_en": [
+      "v0.4.1: max voice-call volume during screening so caller hears guardian",
+      "refine: readable micLoop comments + cleaner PCM16 encoding loop",
+      "Website never caches pages/feeds (always fresh version+link)",
+      "Release bot fires deploys itself (bot pushes never trigger runs)",
+      "Release v0.4.0: changelog feeds (auto)"
+    ],
+    "notes_hi": [
+      "Is version me taze fixes aur sudhaar",
+      "App kholte hi update mil jayega"
+    ]
   }
 ]
