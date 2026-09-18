@@ -1,0 +1,71 @@
+# No Android Studio needed: push karo, APK GitHub se download karo.
+name: Build debug APK
+
+on:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "intercept-android/**"
+      - ".github/workflows/build-apk.yml"
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write # needed for GitHub Releases on tags
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: intercept-android
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: intercept-debug-apk
+          path: intercept-android/app/build/outputs/apk/debug/app-debug.apk
+
+      # Play-Store path (later): proves the release bundle builds on every push.
+      # Publish to Play only after adding the upload keystore secrets + data-safety form.
+      - name: Build release bundle (AAB)
+        run: gradle bundleRelease --no-daemon
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: intercept-release-aab
+          path: intercept-android/app/build/outputs/bundle/release/app-release.aab
+
+  # Tag like v0.2.0 → public GitHub Release with the APK.
+  # Backend APK_URL + website download button point at this release.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: intercept-debug-apk
+          path: dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/app-debug.apk
+          generate_release_notes: true

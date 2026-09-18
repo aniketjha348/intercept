@@ -1,0 +1,36 @@
+[
+  {
+    "version_code": 1,
+    "version_name": "0.1.0-mvp",
+    "date": "2026-09-17",
+    "force": false,
+    "apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk",
+    "notes_en": [
+      "AI call screening with live risk score",
+      "Screenshot, URL and QR analysis",
+      "Post-call security reports"
+    ],
+    "notes_hi": [
+      "लाइव रिस्क स्कोर के साथ AI कॉल स्क्रीनिंग",
+      "स्क्रीनशॉट, URL और QR विश्लेषण",
+      "कॉल के बाद सुरक्षा रिपोर्ट"
+    ]
+  },
+  {
+    "version_code": 2,
+    "version_name": "0.2.0",
+    "date": "2026-09-17",
+    "force": false,
+    "apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk",
+    "notes_en": [
+      "Hindi / Hinglish / English guardian + reports",
+      "In-app updates: app notifies when a new version is out",
+      "Scam DNA now survives restarts (Postgres memory)"
+    ],
+    "notes_hi": [
+      "हिंदी / Hinglish / English में गार्डियन और रिपोर्ट",
+      "इन-ऐप अपडेट: नया वर्ज़न आते ही सूचना",
+      "Scam DNA अब दोबारा शुरू करने पर भी याद रहता है"
+    ]
+  }
+]

@@ -1,0 +1,18 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+python-multipart>=0.0.9
+python-dotenv>=1.0
+httpx>=0.27
+pillow>=10.0
+sqlalchemy>=2.0
+psycopg[binary]>=3.1
+
+# sqlalchemy/psycopg now required (Neon Postgres); langgraph stays optional
+# langgraph>=0.1          # stateful guardian workflow (auto-used if installed)
+# langchain-core>=0.2     # supporting LLM plumbing (optional, not architectural center)
+# openai>=1.30            # LLM provider: OpenAI
+# google-generativeai>=0.5 # LLM provider: Gemini
+# sqlalchemy>=2.0         # postgres persistence (models ready; runtime uses in-memory store for MVP)
+# pytesseract>=0.3        # OCR (falls back to supplied text if missing)
+# pyzbar>=0.1             # QR decode (falls back to supplied qr_text if missing)

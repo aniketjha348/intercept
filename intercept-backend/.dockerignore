@@ -1,0 +1,9 @@
+# Secrets + junk never enter the image
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+tests/
+intercept.db
+.git/

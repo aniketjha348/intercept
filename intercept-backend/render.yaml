@@ -1,0 +1,23 @@
+# Render.com one-click backend (free tier OK for testing).
+services:
+  - type: web
+    name: intercept-backend
+    runtime: docker
+    rootDir: intercept-backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: GOOGLE_API_KEY
+        sync: false # paste in Render dashboard → never in git
+      - key: OPENAI_API_KEY
+        sync: false # paste in Render dashboard → never in git (only if LLM_PROVIDER=openai/auto)
+      - key: DATABASE_URL
+        sync: false # Neon Postgres string → never in git
+      - key: APK_URL
+        sync: false # GitHub Release APK URL → never in git
+      - key: LLM_PROVIDER
+        value: auto
+      - key: LLM_MODEL
+        value: gemini-2.5-flash-lite
+      - key: ALLOW_NETWORK_FETCH
+        value: "false"

@@ -1,0 +1,41 @@
+# Website → AWS: static site to S3 + CloudFront invalidation.
+name: Website to AWS
+
+on:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "intercept-website/**"
+      - ".github/workflows/website-aws.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  S3_BUCKET: ${{ secrets.WEBSITE_BUCKET }}
+  CF_DISTRIBUTION: ${{ secrets.CF_DISTRIBUTION_ID }}
+  API_URL: ${{ secrets.API_URL }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC role, no long-lived keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Point site at the API
+        run: sed -i "s|https://YOUR-API-URL|${API_URL}|g" intercept-website/site.js
+
+      - name: Sync to S3
+        run: aws s3 sync intercept-website/ "s3://${S3_BUCKET}/" --delete --exclude ".git*"
+
+      - name: Invalidate CloudFront
+        run: aws cloudfront create-invalidation --distribution-id "${CF_DISTRIBUTION}" --paths "/*"
