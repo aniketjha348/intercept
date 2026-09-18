@@ -184,6 +184,11 @@ class AppContainer(context: Context) {
         get() = prefs.getBoolean("live_voice", false)
         set(v) = prefs.edit().putBoolean("live_voice", v).apply()
 
+    /** LiveKit studio transport (beta) on/off. Off = raw-WS bridge path. */
+    var livekitTransport: Boolean
+        get() = prefs.getBoolean("livekit_transport", false)
+        set(v) = prefs.edit().putBoolean("livekit_transport", v).apply()
+
     fun appContextForVoice(): android.content.Context = appContext
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }

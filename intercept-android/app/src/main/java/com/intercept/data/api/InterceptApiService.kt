@@ -4,6 +4,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface InterceptApiService {
     @GET("health")
@@ -20,6 +21,12 @@ interface InterceptApiService {
 
     @POST("calls/{id}/speak")
     suspend fun speak(@Path("id") id: String, @Body body: SpeakRequest): SpeakResponse
+
+    @GET("livekit/token")
+    suspend fun livekitToken(@Query("identity") identity: String, @Query("room") room: String): TokenDto
+
+    @POST("livekit/dispatch")
+    suspend fun livekitDispatch(@Body body: Map<String, String>): Map<String, String>
 
     @POST("calls/{id}/takeover")
     suspend fun takeover(@Path("id") id: String): Map<String, String>

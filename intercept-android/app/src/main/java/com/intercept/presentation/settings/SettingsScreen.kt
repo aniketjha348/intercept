@@ -156,6 +156,8 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
 
     var liveVoice by remember { mutableStateOf(container.liveVoice) }
 
+    var lkTransport by remember { mutableStateOf(container.livekitTransport) }
+
     var autoApps by remember { mutableStateOf(container.autoApps) }
 
     var overlay by remember { mutableStateOf(container.overlayOn) }
@@ -380,6 +382,16 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
                 checked = liveVoice,
 
             ) { liveVoice = it; container.liveVoice = it }
+
+            SwitchRow(
+
+                title = "Studio transport (beta)",
+
+                subtitle = "LiveKit mic publish + agent audio. Transcript still flows.",
+
+                checked = lkTransport,
+
+            ) { lkTransport = it; container.livekitTransport = it }
 
 
 

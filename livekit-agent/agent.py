@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import urllib.error
 import urllib.request
 import json as _json
 
@@ -32,6 +33,32 @@ BACKEND = os.environ.get(
 )
 MODEL = os.environ.get(
     "LIVE_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
+
+
+CALL_SID: str | None = None
+_post_ok = True
+
+
+def post_turn(text: str) -> None:
+    """Mirror the caller turn into our backend call session (if the room
+    carries one: intercept-<sid>). Transcript, risk, report all keep working.
+    Stops posting after the session ends (404) — the voice chat continues."""
+    global _post_ok
+    if not _post_ok or not CALL_SID:
+        return
+    try:
+        req = urllib.request.Request(
+            f"{BACKEND}/calls/{CALL_SID}/transcript",
+            data=_json.dumps({"text": text, "speaker": "caller"}).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=25):
+            pass
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            _post_ok = False
+    except Exception as exc:
+        logger.warning("turn post failed: %s", exc)
 
 
 def score_risk(text: str) -> dict | None:
@@ -70,6 +97,11 @@ class InterceptAgent(voice.Agent):
 
 async def entrypoint(ctx: JobContext):
     await ctx.connect()
+    global CALL_SID
+    name = getattr(ctx.room, "name", "") or ""
+    CALL_SID = name[len("intercept-"):] if name.startswith("intercept-") else None
+    if CALL_SID:
+        logger.info("linked backend session %s", CALL_SID)
     session = voice.AgentSession(
         llm=google.beta.realtime.RealtimeModel(
             model=MODEL,
@@ -85,6 +117,7 @@ async def entrypoint(ctx: JobContext):
         if not text:
             return
         print(f"\nCALLER: {text}", flush=True)
+        post_turn(text)
         res = score_risk(text)
         if res is None:
             return

@@ -102,26 +102,33 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            if (container.liveVoice) vm.startLiveVoice() else vm.startListening()
+            if (container.livekitTransport) vm.startLiveKitTransport()
+            else if (container.liveVoice) vm.startLiveVoice() else vm.startListening()
         }
     }
 
+    fun withMic(action: () -> Unit) {
+        val ok = ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+        if (ok) action() else micLauncher.launch(Manifest.permission.RECORD_AUDIO)
+    }
+
     fun ensureMicThenListen() {
+        if (container.livekitTransport) {
+            if (s.lkTransport) vm.stopLiveKitTransport()
+            else withMic { vm.startLiveKitTransport() }
+            return
+        }
         if (container.liveVoice) {
-            if (s.voiceLive) vm.stopLiveVoice() else {
-                val ok = ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) ==
-                    PackageManager.PERMISSION_GRANTED
-                if (ok) vm.startLiveVoice() else micLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            }
+            if (s.voiceLive) vm.stopLiveVoice()
+            else withMic { vm.startLiveVoice() }
             return
         }
         if (s.listening) {
             vm.stopListening()
             return
         }
-        val ok = ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) ==
-            PackageManager.PERMISSION_GRANTED
-        if (ok) vm.startListening() else micLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        withMic { vm.startListening() }
     }
 
     // Speaker path: user answered a real call on speaker (we are not the
@@ -178,7 +185,9 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
                         RiskSuspiciousOnRoom,
                     )
                 }
-                if (s.voiceLive) {
+                if (s.lkTransport) {
+                    StatusLine("Studio transport — mic live, agent on LiveKit", RiskCriticalOnRoom)
+                } else if (s.voiceLive) {
                     StatusLine("Live voice — talking in real time", RiskCriticalOnRoom)
                 } else if (s.listening) {
                     StatusLine(

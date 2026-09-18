@@ -10,6 +10,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven("https://jitpack.io") // required by LiveKit Android SDK
     }
 }
 rootProject.name = "INTERCEPT"

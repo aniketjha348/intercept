@@ -40,6 +40,7 @@ data class LiveUiState(
     val realCall: Boolean = false,
     val listening: Boolean = false,
     val voiceLive: Boolean = false,
+    val lkTransport: Boolean = false,
     val interim: String = "",
     val ended: Boolean = false,
     val endedReason: String = "",
@@ -61,6 +62,7 @@ class LiveCallViewModel(
     private var demoJob: Job? = null
     private var stt: CallerStt? = null
     private var live: LiveVoice? = null
+    private var lkCall: com.intercept.speech.LiveKitCall? = null
     /** Headless service is driving this session (talking + listening) — UI only watches. */
     private val driven: Boolean = AutoScreenService.activeCallSession == sessionId
 
@@ -322,6 +324,76 @@ class LiveCallViewModel(
         }
     }
 
+    /**
+     * Studio transport: join the call's LiveKit room, publish the mic, hear
+     * the agent natively. Transcript/risk keep arriving through the backend
+     * session (the agent posts turns there). Any failure → STT path.
+     */
+    fun startLiveKitTransport() {
+        if (_state.value.lkTransport || _state.value.ended) return
+        stopListening()
+        stopLiveVoice()
+        viewModelScope.launch {
+            val tok = try {
+                container.repo.livekitToken(sessionId)
+            } catch (_: Exception) {
+                null
+            }
+            if (tok == null) {
+                _state.update { it.copy(error = "Studio transport unavailable — mic/typed turns still work.") }
+                return@launch
+            }
+            val call = try {
+                com.intercept.speech.LiveKitCall(container.appContextForVoice())
+            } catch (_: Exception) {
+                null
+            } ?: run {
+                _state.update { it.copy(error = "Studio transport unavailable — mic/typed turns still work.") }
+                return@launch
+            }
+            call.onConnected = {
+                _state.update { it.copy(lkTransport = true, error = null) }
+                viewModelScope.launch {
+                    try {
+                        container.repo.livekitDispatch(tok.room)
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            call.onError = { msg ->
+                lkCall = null
+                _state.update {
+                    it.copy(lkTransport = false,
+                        error = "Studio transport dropped ($msg) — mic/typed turns still work.")
+                }
+            }
+            call.onDisconnected = {
+                lkCall = null
+                if (_state.value.lkTransport) {
+                    _state.update { it.copy(lkTransport = false) }
+                }
+            }
+            lkCall = call
+            try {
+                call.connect(tok.url, tok.token)
+            } catch (_: Exception) {
+                lkCall = null
+                _state.update { it.copy(error = "Studio transport unavailable — mic/typed turns still work.") }
+            }
+        }
+    }
+
+    fun stopLiveKitTransport() {
+        try {
+            lkCall?.disconnect()
+        } catch (_: Exception) {
+        }
+        lkCall = null
+        if (_state.value.lkTransport) {
+            _state.update { it.copy(lkTransport = false) }
+        }
+    }
+
     /** Hang up the telecom call + restore audio (backend session ends separately). */
     private fun stopRealCallAudio() {
         try {
@@ -354,6 +426,7 @@ class LiveCallViewModel(
     }
 
     fun endCall() = viewModelScope.launch {
+        stopLiveKitTransport()
         stopLiveVoice()
         stopRealCallAudio()
         try {
@@ -365,6 +438,7 @@ class LiveCallViewModel(
     }
 
     override fun onCleared() {
+        stopLiveKitTransport()
         stopLiveVoice()
         stopRealCallAudio()
         socket?.close()
