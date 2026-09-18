@@ -98,5 +98,23 @@
       "Is version me taze fixes aur sudhaar",
       "App kholte hi update mil jayega"
     ]
+  },
+  {
+    "version_code": 7,
+    "version_name": "0.4.0",
+    "date": "2026-09-18",
+    "force": false,
+    "apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk",
+    "notes_en": [
+      "v0.4.0: Live voice bridge+fallback, realtime Android voice, summaries (feeds auto via CI)",
+      "Equal-AI voice: Live bridge (/ws/live) + Android realtime voice + plain-words summaries",
+      "Models: 3.5-flash-lite default + full fallback chains (quota-proof)",
+      "Release bot: PAT push-back so deploys trigger (GITHUB_TOKEN chains are blocked)",
+      "Release v0.3.3: changelog feeds (auto)"
+    ],
+    "notes_hi": [
+      "Is version me taze fixes aur sudhaar",
+      "App kholte hi update mil jayega"
+    ]
   }
 ]
