@@ -37,6 +37,19 @@ MODEL = os.environ.get(
 
 CALL_SID: str | None = None
 _post_ok = True
+_closing_sent = False
+
+# CRITICAL means the engine is past doubting: the caller is being told the
+# call is over, in one firm line, instead of being politely interrogated
+# further. The agent never argues after this — a scammer's whole game is
+# keeping the conversation alive.
+CRITICAL_CLOSING = (
+    "Deliver one short, firm closing line in the caller's own language, then "
+    "stop. State plainly that no OTP, PIN, password, payment or remote access "
+    "will be shared, that this call is being recorded and reported, and say "
+    "goodbye. Do not ask any new question and do not let them restart the "
+    "conversation."
+)
 
 
 def post_turn(text: str) -> None:
@@ -112,6 +125,7 @@ async def entrypoint(ctx: JobContext):
 
     @session.on("user_input_transcribed")
     def on_transcript(event: voice.UserInputTranscribedEvent):
+        global _closing_sent
         if not event.is_final:
             return
         text = (event.transcript or "").strip()
@@ -128,6 +142,10 @@ async def entrypoint(ctx: JobContext):
             print("\n🚨 HIGH RISK — probable scam", flush=True)
             if res["simple"]:
                 print(res["simple"], flush=True)
+        if res["level"].upper() == "CRITICAL" and not _closing_sent:
+            _closing_sent = True
+            print("\n🛑 CRITICAL — delivering the closing line", flush=True)
+            asyncio.create_task(session.generate_reply(instructions=CRITICAL_CLOSING))
 
     await session.start(room=ctx.room, agent=InterceptAgent())
     await session.generate_reply(

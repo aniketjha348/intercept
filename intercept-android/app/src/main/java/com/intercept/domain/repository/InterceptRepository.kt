@@ -26,6 +26,9 @@ interface InterceptRepository {
     /** LiveKit room credentials bound to this call session, or null. */
     suspend fun livekitToken(sessionId: String): com.intercept.domain.model.LiveKitToken?
 
+    /** Calls being screened right now (forwarded or local). Empty = quiet. */
+    suspend fun liveSessions(): List<com.intercept.domain.model.LiveSession>
+
     /** Send the voice agent into the call's room. False = keep current path. */
     suspend fun livekitDispatch(room: String): Boolean
 

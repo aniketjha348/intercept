@@ -105,6 +105,13 @@ class AppContainer(context: Context) {
     var pendingSharedText: String? = null
 
     /**
+     * Watching a forwarded call's session: transcript only, never touch the
+     * backend session (the agent owns it) and never speak. Set when entering
+     * Live from the Live-now feed; cleared on leave.
+     */
+    var watchOnlySid: String? = null
+
+    /**
      * True when the user started screening a REAL ringing call we could not pick
      * up ourselves (not default dialer): they answer on speaker, AI listens
      * through the mic. Consumed once by the Live screen.

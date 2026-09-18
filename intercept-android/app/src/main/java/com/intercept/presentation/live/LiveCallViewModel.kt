@@ -31,6 +31,8 @@ data class LiveUiState(
     val chain: List<Stage> = emptyList(),
     val why: List<String> = emptyList(),
     val objective: String = "",
+    val claimed: String = "",
+    val watchOnly: Boolean = false,
     val similar: String? = null,
     val simple: String = "",
     val guardianText: String = "",
@@ -63,6 +65,19 @@ class LiveCallViewModel(
     private var stt: CallerStt? = null
     private var live: LiveVoice? = null
     private var lkCall: com.intercept.speech.LiveKitCall? = null
+    /**
+     * Remote watch (forwarded call): our backend session, agent's voice. While
+     * true every path that would speak, answer, or end the session stays shut —
+     * a watcher can never talk over the agent, and a glance can never hang up
+     * someone else's call. joinCall() lifts it.
+     */
+    private var watching: Boolean = container.watchOnlySid == sessionId
+
+    init {
+        if (watching) {
+            _state.update { it.copy(watchOnly = true) }
+        }
+    }
     /** Headless service is driving this session (talking + listening) — UI only watches. */
     private val driven: Boolean = AutoScreenService.activeCallSession == sessionId
 
@@ -103,7 +118,7 @@ class LiveCallViewModel(
             }
             is CallEvent.AiReply -> {
                 _state.update { it.copy(guardianText = e.text) }
-                if (!driven) {
+                if (!driven && !watching) {
                     viewModelScope.launch {
                         container.speakBest(sessionId, e.text, _state.value.realCall)
                     }
@@ -121,6 +136,8 @@ class LiveCallViewModel(
 
     fun sendCallerText(text: String) {
         if (text.isBlank() || _state.value.ended) return
+        // Watcher: the agent owns this conversation — never inject a turn.
+        if (watching) return
         // Barge-in: caller started talking → cut our voice instantly.
         try {
             container.stopVoice()
@@ -142,14 +159,14 @@ class LiveCallViewModel(
                     transcript = it.transcript + ChatLine("intercept", r.reply),
                     risk = r.risk, level = r.level, signals = r.signals,
                     chain = r.chain, why = _explainFallback(r.why),
-                    objective = r.objective, similar = r.similar, simple = r.simple,
+                    objective = r.objective, claimed = r.claimedOrg, similar = r.similar, simple = r.simple,
                     guardianText = r.reply, offerTakeover = r.offerTakeover,
                     mustTerminate = r.mustTerminate, error = null,
                     ended = r.mustTerminate,
                     endedReason = if (r.mustTerminate) r.simple else it.endedReason,
                 )
             }
-            if (!driven) {
+            if (!driven && !watching) {
                 container.speakBest(sessionId, r.reply, _state.value.realCall)
             }
             if (r.mustTerminate) stopRealCallAudio()
@@ -199,6 +216,8 @@ class LiveCallViewModel(
     /** Caller ears on: every recognized sentence streams to the backend. */
     fun startListening() {
         if (_state.value.listening || _state.value.ended) return
+        // Our mic would fight the agent's audio for the same call.
+        if (watching) return
         val active = try {
             container.callerStt()
         } catch (_: Exception) {
@@ -270,6 +289,7 @@ class LiveCallViewModel(
      */
     fun startLiveVoice() {
         if (_state.value.voiceLive || _state.value.ended) return
+        if (watching) return
         stopListening()
         val voice = try {
             LiveVoice(container.appContextForVoice(), container.backendUrl, sessionId)
@@ -331,6 +351,7 @@ class LiveCallViewModel(
      */
     fun startLiveKitTransport() {
         if (_state.value.lkTransport || _state.value.ended) return
+        if (watching) return
         stopListening()
         stopLiveVoice()
         viewModelScope.launch {
@@ -416,6 +437,19 @@ class LiveCallViewModel(
         if (_state.value.realCall) _state.update { it.copy(realCall = false) }
     }
 
+    /**
+     * Join the live call instead of watching it: hand the conversation to the
+     * owner. Watch mode lifts first (so the mic path is allowed), then the
+     * normal takeover runs — backend human mode, agent stops speaking.
+     */
+    fun joinCall() {
+        if (!watching) return
+        watching = false
+        container.watchOnlySid = null
+        _state.update { it.copy(watchOnly = false) }
+        takeover()
+    }
+
     fun takeover() = viewModelScope.launch {
         try {
             container.repo.takeover(sessionId)
@@ -429,9 +463,13 @@ class LiveCallViewModel(
         stopLiveKitTransport()
         stopLiveVoice()
         stopRealCallAudio()
-        try {
-            container.repo.endCall(sessionId)
-        } catch (_: Exception) {
+        // Watching is not owning: leaving the screen stops the watch, it must
+        // never terminate the session the voice agent is still running.
+        if (!watching) {
+            try {
+                container.repo.endCall(sessionId)
+            } catch (_: Exception) {
+            }
         }
         socket?.close()
         _state.update { it.copy(ended = true) }
@@ -442,6 +480,8 @@ class LiveCallViewModel(
         stopLiveVoice()
         stopRealCallAudio()
         socket?.close()
+        // Leave watch mode clean: the next real screening must not inherit it.
+        if (watching) container.watchOnlySid = null
         super.onCleared()
     }
 

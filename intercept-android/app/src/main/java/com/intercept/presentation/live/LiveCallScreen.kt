@@ -139,6 +139,9 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
 
     LaunchedEffect(sid) {
         vm.connect()
+        // Watching the agent's own call: transcript only. Touching audio here
+        // would hijack a call that is not this device's to route.
+        if (container.watchOnlySid == sid) return@LaunchedEffect
         // Service already driving this session? Just watch — no second mic/TTS.
         if (AutoScreenService.activeCallSession == sid) return@LaunchedEffect
         // Real telecom call up? Route audio + start ears automatically.
@@ -176,6 +179,9 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
             }
         ) { pad ->
             Column(Modifier.fillMaxSize().padding(pad).padding(horizontal = 16.dp)) {
+                if (s.watchOnly) {
+                    StatusLine("Watching — the AI is handling this call", RiskLowOnRoom)
+                }
                 if (s.realCall) {
                     StatusLine("Real call on speaker — AI is screening live", RoomMuted)
                 }
@@ -247,6 +253,38 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
                                 ) {
                                     s.chain.forEach { StageChip(it.stage) }
                                 }
+                            }
+                        }
+                    }
+                }
+
+                // Intent banner: who the caller claims to be, and what they are
+                // after. The two plain answers anyone looks for mid-call.
+                val claims = s.claimed.takeIf { it.isNotBlank() && !it.equals("Unknown", true) }
+                val goal = s.objective.takeIf { it.isNotBlank() && !it.equals("Unknown", true) }
+                if (!simpleMode && (claims != null || goal != null)) {
+                    Spacer(Modifier.height(10.dp))
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = RoomRaised,
+                            contentColor = RoomInk,
+                        ),
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(Modifier.padding(14.dp)) {
+                            Text(
+                                "Intent",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = RoomMuted,
+                            )
+                            claims?.let {
+                                Spacer(Modifier.height(4.dp))
+                                Text("Claims to be from $it", style = MaterialTheme.typography.bodyMedium)
+                            }
+                            goal?.let {
+                                Spacer(Modifier.height(4.dp))
+                                Text("Likely goal: $it", style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
@@ -338,6 +376,25 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
                     Spacer(Modifier.height(10.dp))
                     Button(onClick = { nav.navigate(Routes.REPORTS) }, modifier = Modifier.fillMaxWidth()) {
                         Text("View security report")
+                    }
+                } else if (s.watchOnly) {
+                    // Silent watch: no typing, no speaking — the agent owns the
+                    // call. Joining hands it to this phone (mic goes into the
+                    // agent's room); stopping only ends the watch, never the call.
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = {
+                                vm.joinCall()
+                                ensureMicThenListen()
+                            },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text("Join call")
+                        }
+                        OutlinedButton(onClick = { vm.endCall() }, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Filled.CallEnd, contentDescription = null)
+                            Text("Stop watching")
+                        }
                     }
                 } else {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

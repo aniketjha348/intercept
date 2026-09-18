@@ -56,6 +56,7 @@ data class TurnResponse(
     @SerialName("attack_chain") val attackChain: List<AttackStageDto> = emptyList(),
     val why: List<String> = emptyList(),
     @SerialName("likely_objective") val likelyObjective: String = "",
+    @SerialName("claimed_org") val claimedOrg: String = "",
     @SerialName("similar_pattern") val similarPattern: String? = null,
     @SerialName("simple_mode") val simpleMode: String = "",
     @SerialName("offer_takeover") val offerTakeover: Boolean = false,
@@ -104,6 +105,16 @@ data class AnalyzeResponse(
 
 @Serializable
 data class TranscriptLineDto(val speaker: String, val text: String)
+
+@Serializable
+data class LiveSessionDto(
+    @SerialName("session_id") val sessionId: String = "",
+    val caller: String = "",
+    val language: String = "en",
+    val risk: Int = 0,
+    val level: String = "LOW",
+    val turns: Int = 0,
+)
 
 @Serializable
 data class TokenDto(

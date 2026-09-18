@@ -83,6 +83,19 @@ def test_owner_name_echoed_never_persisted():
     assert CallMemory().summary().find("owner=") == -1
 
 
+def test_live_feed_lists_active():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    c = TestClient(app)
+    sid = c.post("/calls/start", json={"caller": "live-feed"}).json()["session_id"]
+    live = c.get("/calls/live").json()["live"]
+    assert any(x["session_id"] == sid and x["caller"] == "live-feed"
+               and "risk" in x and "level" in x for x in live)
+    c.post(f"/calls/{sid}/end", json={})
+    assert all(x["session_id"] != sid
+               for x in c.get("/calls/live").json()["live"])
+
+
 def test_say_relay_queues_message():
     from fastapi.testclient import TestClient
     from app.main import app

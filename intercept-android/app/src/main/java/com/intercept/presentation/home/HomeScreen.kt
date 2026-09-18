@@ -40,6 +40,7 @@ import androidx.navigation.NavController
 import com.intercept.BuildConfig
 import com.intercept.data.DemoScript
 import com.intercept.di.AppContainer
+import com.intercept.domain.model.LiveSession
 import com.intercept.domain.model.UpdateInfo
 import com.intercept.presentation.components.ActionRow
 import com.intercept.presentation.components.BrandMark
@@ -62,6 +63,7 @@ fun HomeScreen(nav: NavController, container: AppContainer) {
     var update by remember { mutableStateOf<UpdateInfo?>(null) }
     var downloading by remember { mutableStateOf(false) }
     var downloadId by remember { mutableStateOf(-1L) }
+    var live by remember { mutableStateOf<List<LiveSession>>(emptyList()) }
 
     // In-app updater: compare with /app/latest on every launch.
     LaunchedEffect(Unit) {
@@ -69,6 +71,15 @@ fun HomeScreen(nav: NavController, container: AppContainer) {
             update = container.repo.checkUpdate(BuildConfig.VERSION_CODE)
         }
     }
+    // Live-now: calls the AI is screening right now (forwarded or local).
+    // Quiet by default — the section only exists when something is happening.
+    LaunchedEffect(Unit) {
+        while (true) {
+            live = container.repo.liveSessions()
+            kotlinx.coroutines.delay(10_000)
+        }
+    }
+
     DisposableEffect(downloadId) {
         if (downloadId < 0) return@DisposableEffect onDispose {}
         val receiver = object : BroadcastReceiver() {
@@ -179,6 +190,24 @@ fun HomeScreen(nav: NavController, container: AppContainer) {
                     onClick = { nav.navigate(Routes.SETUP) },
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("Finish setup") }
+            }
+
+            if (live.isNotEmpty()) {
+                Spacer(Modifier.height(32.dp))
+                SectionLabel("Live now")
+                live.forEach { s ->
+                    ActionRow(
+                        title = "AI is screening ${s.caller}",
+                        subtitle = "Risk ${s.risk} • ${s.level.label} • ${s.turns} turns — tap to watch",
+                        onClick = {
+                            // Silent watch: the agent keeps the call, we only look.
+                            container.watchOnlySid = s.sessionId
+                            container.sessionCallers[s.sessionId] = s.caller
+                            nav.navigate(Routes.live(s.sessionId))
+                        },
+                        showRule = false,
+                    )
+                }
             }
 
             Spacer(Modifier.height(32.dp))

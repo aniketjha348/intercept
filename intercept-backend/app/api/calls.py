@@ -139,6 +139,26 @@ def say(session_id: str, body: SayIn):
     return {"event": "RELAY_QUEUED", "text": text}
 
 
+@router.get("/live")
+def live_sessions():
+    """Sessions being screened RIGHT NOW (forwarded or local) — the app's
+    Live-now feed. Read-only; never touches call state."""
+    out = []
+    for sid, sess in MANAGER.calls.items():
+        if not sess.active:
+            continue
+        last = sess.last_result
+        out.append({
+            "session_id": sid,
+            "caller": sess.caller,
+            "language": sess.language,
+            "risk": last.risk_score if last else 0,
+            "level": last.risk_level if last else "LOW",
+            "turns": sess.memory.turns,
+        })
+    return {"live": out}
+
+
 @router.post("/{session_id}/takeover")
 def takeover(session_id: str):
     sess = MANAGER.get(session_id)

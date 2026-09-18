@@ -25,6 +25,9 @@ interface InterceptApiService {
     @GET("livekit/token")
     suspend fun livekitToken(@Query("identity") identity: String, @Query("room") room: String): TokenDto
 
+    @GET("calls/live")
+    suspend fun liveSessions(): Map<String, List<LiveSessionDto>>
+
     @POST("livekit/dispatch")
     suspend fun livekitDispatch(@Body body: Map<String, String>): Map<String, String>
 

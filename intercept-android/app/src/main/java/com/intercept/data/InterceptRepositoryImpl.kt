@@ -33,7 +33,8 @@ class InterceptRepositoryImpl(
             reply = reply, risk = r.risk, level = RiskLevel.of(r.level),
             signals = r.signals.map { Sig(it.code, it.category, it.confidence, it.evidence) },
             chain = r.attackChain.map { Stage(it.stage, it.confidence) },
-            why = r.why, objective = r.likelyObjective, similar = r.similarPattern,
+            why = r.why, objective = r.likelyObjective, claimedOrg = r.claimedOrg,
+            similar = r.similarPattern,
             simple = r.simpleMode.ifEmpty { reply },
             offerTakeover = r.offerTakeover, mustTerminate = r.mustTerminate,
         )
@@ -88,6 +89,16 @@ class InterceptRepositoryImpl(
         true
     } catch (_: Exception) {
         false
+    }
+
+    override suspend fun liveSessions(): List<com.intercept.domain.model.LiveSession> = try {
+        (api.liveSessions()["live"] ?: emptyList()).map {
+            com.intercept.domain.model.LiveSession(
+                it.sessionId, it.caller, it.risk,
+                com.intercept.domain.model.RiskLevel.of(it.level), it.turns)
+        }
+    } catch (_: Exception) {
+        emptyList()
     }
 
     override suspend fun checkUpdate(installedCode: Int): UpdateInfo? = try {
