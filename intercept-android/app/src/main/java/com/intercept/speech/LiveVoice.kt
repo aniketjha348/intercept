@@ -141,25 +141,33 @@ class LiveVoice(context: Context, backendUrl: String, sessionId: String) {
     }
 
     private fun micLoop(rec: AudioRecord) {
-        // ~200ms frames keep latency low without spamming the socket.
-        val buf = ShortArray(3200)
+        // Gemini Live expects audio frames ~200ms at 16kHz = 3200 samples.
+        // We read in 200ms chunks for proper synchronization with the backend.
+        val frameSize = 3200 // 200ms @ 16kHz
+        val buf = ShortArray(frameSize)
+
         while (running) {
             try {
+                // Read blocks until frame size samples captured or timeout
                 val n = rec.read(buf, 0, buf.size)
-                if (n <= 0) continue
-                val bytes = ByteArray(n * 2)
-                var i = 0
-                var j = 0
-                while (i < n) {
-                    val v = buf[i].toInt()
-                    bytes[j] = (v and 0xFF).toByte()
-                    bytes[j + 1] = ((v shr 8) and 0xFF).toByte()
-                    i++
-                    j += 2
+                if (n <= 0) {
+                    // No data captured - continue reading
+                    continue
                 }
+
+                // Convert PCM16 little-endian samples to bytes
+                val bytes = ByteArray(n * 2)
+                for (i in 0 until n) {
+                    val v = buf[i].toInt()
+                    bytes[i * 2] = (v and 0xFF).toByte()
+                    bytes[i * 2 + 1] = ((v shr 8) and 0xFF).toByte()
+                }
+
+                // Encode to base64 and send via WebSocket
                 val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
                 ws?.send(JSONObject().put("type", "audio").put("data", b64).toString())
-            } catch (_: Exception) {
+
+            } catch (e: Exception) {
                 if (!running) return
             }
         }
