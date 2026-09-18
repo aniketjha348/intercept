@@ -198,5 +198,23 @@
       "Is version me taze fixes aur sudhaar",
       "App kholte hi update mil jayega"
     ]
+  },
+  {
+    "version_code": 13,
+    "version_name": "0.4.6",
+    "date": "2026-09-18",
+    "force": false,
+    "apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk",
+    "notes_en": [
+      "v0.4.6: toggles are the law (setupDone decoupled), Done needs auto-answer",
+      "Guard agent secrets from commits",
+      "Python voice agent (stack purity) + LiveKit env live",
+      "Hackathon voice: LiveKit token endpoint + agent with our risk brain",
+      "Release v0.4.5: changelog feeds (auto)"
+    ],
+    "notes_hi": [
+      "Is version me taze fixes aur sudhaar",
+      "App kholte hi update mil jayega"
+    ]
   }
 ]
