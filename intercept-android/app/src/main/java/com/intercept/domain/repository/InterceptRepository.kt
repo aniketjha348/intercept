@@ -32,6 +32,9 @@ interface InterceptRepository {
     /** Send the voice agent into the call's room. False = keep current path. */
     suspend fun livekitDispatch(room: String): Boolean
 
+    /** Forwarding target + USSD codes. Never null; not-configured is a value. */
+    suspend fun forwarding(): com.intercept.domain.model.Forwarding
+
     /** Returns UpdateInfo when server version is newer than installed, else null. */
     suspend fun checkUpdate(installedCode: Int): UpdateInfo?
 }

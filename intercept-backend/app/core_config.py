@@ -39,6 +39,10 @@ WHATSAPP_APP_SECRET = _env("WHATSAPP_APP_SECRET")
 LIVEKIT_URL = _env("LIVEKIT_URL")
 LIVEKIT_KEY = _env("LIVEKIT_KEY")
 LIVEKIT_SECRET = _env("LIVEKIT_SECRET")
+# AI answering by call forwarding (the Equal-AI model): the number the app makes
+# the carrier forward calls to, where the voice agent answers. Empty =
+# /assistant/forwarding reports not configured and the app stays on-device.
+FORWARD_NUMBER = _env("ASSISTANT_FORWARD_NUMBER")
 ALLOW_NETWORK_FETCH = _env("ALLOW_NETWORK_FETCH", "false").lower() in ("1", "true", "yes")
 DATABASE_URL = _env("DATABASE_URL", "sqlite:///./intercept.db")
 APP_NAME = "INTERCEPT"

@@ -144,6 +144,20 @@ class AppContainer(context: Context) {
         set(v) = prefs.edit().putBoolean("overlay_on", v).apply()
 
     /**
+     * Carrier forwarding is armed: unknown calls are declined so the network
+     * hands them to the cloud AI, which talks to the caller as the other party.
+     * Off = the on-device screening path (notification + tap to screen).
+     */
+    var forwardingOn: Boolean
+        get() = prefs.getBoolean("forwarding_on", false)
+        set(v) = prefs.edit().putBoolean("forwarding_on", v).apply()
+
+    /** The number forwarding points at, cached when the screen fetched it. */
+    var forwardNumber: String
+        get() = prefs.getString("forward_number", "") ?: ""
+        set(v) = prefs.edit().putString("forward_number", v.trim()).apply()
+
+    /**
      * Owner's first name (optional, session-only): the guardian talks like
      * family — "Ramesh ji is busy". Never gates setup, never persisted server-side.
      */

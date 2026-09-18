@@ -17,9 +17,13 @@ import com.intercept.appContainer
  * "let the AI screen this" prompt when auto-answer is off, and are handed to
  * InterceptInCallService when it is on.
  *
- * The call is never disallowed on purpose: the tap-to-screen flow needs the
- * call still alive for the user to answer. Full auto-answer requires BOTH the
- * ROLE_CALL_SCREENING and the ROLE_DIALER role.
+ * Otherwise the call is never disallowed on purpose: the tap-to-screen flow
+ * needs the call still alive for the user to answer. Full auto-answer requires
+ * BOTH the ROLE_CALL_SCREENING and the ROLE_DIALER role.
+ *
+ * The one exception is carrier forwarding: when it is armed, an unknown call is
+ * DECLINED so the network forwards it to our number and the cloud AI answers as
+ * the other party — the only way the caller ever hears the AI.
  */
 class InterceptScreeningService : CallScreeningService() {
 
@@ -53,6 +57,27 @@ class InterceptScreeningService : CallScreeningService() {
             false
         }
 
+        // Carrier forwarding armed: DECLINE the call so the network forwards it
+        // to our number, where the AI answers as the other party. This is the
+        // only path where the caller hears the AI — the on-device paths below
+        // cannot speak into a live cellular call.
+        val forwarding = try {
+            container.forwardingOn
+        } catch (_: Exception) {
+            false
+        }
+        if (forwarding && ContactHelper.isUnknown(applicationContext, number)) {
+            val reject = CallResponse.Builder()
+                .setDisallowCall(true)
+                .setRejectCall(true)
+                .setSkipCallLog(false)
+                .setSkipNotification(false)
+                .build()
+            respondToCall(callDetails, reject)
+            showForwardedNotification(number)
+            return
+        }
+
         // Either way the call is allowed through. (No allow-flag exists: a
         // response WITHOUT disallow/reject IS allow.)
         val response = CallResponse.Builder()
@@ -68,6 +93,32 @@ class InterceptScreeningService : CallScreeningService() {
 
         container.pendingIncomingCaller = number
         showScreeningNotification(number)
+    }
+
+    /** The call is on its way to the cloud AI — tell the owner why it stopped ringing. */
+    private fun showForwardedNotification(number: String) {
+        val channelId = "intercept_forwarding"
+        val nm = getSystemService(NotificationManager::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            nm.createNotificationChannel(
+                NotificationChannel(channelId, "AI answering", NotificationManager.IMPORTANCE_DEFAULT)
+            )
+        }
+        val intent = Intent(this, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        val pi = PendingIntent.getActivity(
+            this, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("AI is answering $number")
+            .setContentText("Watch the call or join any time.")
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setContentIntent(pi)
+            .setAutoCancel(true)
+            .build()
+        nm.notify(number.hashCode(), notification)
     }
 
     private fun showScreeningNotification(number: String) {

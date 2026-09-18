@@ -236,6 +236,12 @@ fun HomeScreen(nav: NavController, container: AppContainer) {
                 showRule = false,
             )
             ActionRow(
+                title = "Let the AI answer my calls",
+                subtitle = if (container.forwardingOn)
+                    "On — unknown calls go to the AI" else "Off — turn on call forwarding",
+                onClick = { nav.navigate(Routes.FORWARDING) },
+            )
+            ActionRow(
                 title = "Last security report",
                 subtitle = "What the caller tried, and what was protected",
                 onClick = { nav.navigate(Routes.REPORTS) },

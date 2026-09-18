@@ -158,3 +158,15 @@ data class LatestDto(
     @SerialName("notes_en") val notesEn: List<String> = emptyList(),
     @SerialName("notes_hi") val notesHi: List<String> = emptyList(),
 )
+
+/** GET /assistant/forwarding — how to point the carrier at our cloud AI. */
+@Serializable
+data class ForwardingDto(
+    val configured: Boolean = false,
+    val number: String = "",
+    @SerialName("busy_activate") val busyActivate: String = "",
+    @SerialName("busy_deactivate") val busyDeactivate: String = "##67#",
+    @SerialName("noanswer_activate") val noAnswerActivate: String = "",
+    @SerialName("noanswer_deactivate") val noAnswerDeactivate: String = "##61#",
+    val reason: String = "",
+)

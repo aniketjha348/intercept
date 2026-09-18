@@ -110,6 +110,21 @@ data class CallRecord(
     val at: Long = 0L,
 )
 
+/**
+ * How this phone hands the caller to the cloud AI: the number to forward to
+ * and the USSD codes that arm and clear it. A normal app cannot speak into a
+ * live cellular call, so forwarding is what lets the AI be the other party.
+ */
+data class Forwarding(
+    val configured: Boolean = false,
+    val number: String = "",
+    val busyActivate: String = "",
+    val busyDeactivate: String = "##67#",
+    val noAnswerActivate: String = "",
+    val noAnswerDeactivate: String = "##61#",
+    val reason: String = "",
+)
+
 /** In-app update feed entry (mirrors backend /app/latest). */
 data class UpdateInfo(
     val versionCode: Int,

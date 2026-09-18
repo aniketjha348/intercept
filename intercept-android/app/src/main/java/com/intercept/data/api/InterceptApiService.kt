@@ -43,6 +43,9 @@ interface InterceptApiService {
     @GET("app/latest")
     suspend fun latest(): LatestDto
 
+    @GET("assistant/forwarding")
+    suspend fun forwarding(): ForwardingDto
+
     @POST("analyze/text")
     suspend fun analyzeText(@Body body: AnalyzeTextRequest): AnalyzeResponse
 

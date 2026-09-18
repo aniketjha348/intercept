@@ -289,14 +289,37 @@
     "force": false,
     "apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk",
     "notes_en": [
-      "v0.6.1: earpiece routing fix — AI talks to caller, not user",
-      "docs: add the device check for earpiece screening audio",
-      "fix: AI voice now reaches the CALLER not the user — earpiece routing + call-stream mic + MODE_IN_COMMUNICATION",
-      "Release v0.6.0: changelog feeds (auto)"
+      "v0.6.1: earpiece routing fix — AI talks to caller, not user"
     ],
     "notes_hi": [
-      "Is version me taze fixes aur sudhaar",
-      "App kholte hi update mil jayega"
+      "AI ki awaaz ab sirf caller ko jayegi — user ko nahi"
+    ]
+  },
+  {
+    "version_code": 22,
+    "version_name": "0.6.3",
+    "date": "2026-09-19",
+    "force": false,
+    "apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk",
+    "notes_en": [
+      "User hears NOTHING during AI screening — fully silent for phone holder",
+      "AI voice goes only to the caller through phone line",
+      "Takeover button unmutes + speaker on for hands-free",
+      "Call-stream mic — AI listens to caller, not room audio",
+      "Owner name persona — guardian talks like family",
+      "Per-turn language switch — Hindi/Hinglish/English mid-call",
+      "Live feed — see active screened calls in real-time",
+      "Watch mode — watch forwarded calls transcript-only"
+    ],
+    "notes_hi": [
+      "AI screening ke waqt phone rakhne wale ko kuch nahi sunayi dega",
+      "AI ki awaaz sirf caller ko phone line se jayegi",
+      "Takeover button dabao — speaker on + unmute ho jayega",
+      "Caller ki awaaz call stream se, room se nahi",
+      "Apna naam do — guardian family jaisa baat karega",
+      "Hindi/Hinglish/English call ke beech me switch hoga",
+      "Live feed — abhi chal rahi calls dekho",
+      "Watch mode — forwarded calls ka transcript dekho"
     ]
   }
 ]

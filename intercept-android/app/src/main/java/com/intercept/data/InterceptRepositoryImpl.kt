@@ -9,6 +9,7 @@ import com.intercept.data.api.TurnRequest
 import com.intercept.data.api.UrlRequest
 import com.intercept.domain.model.Analysis
 import com.intercept.domain.model.ChatLine
+import com.intercept.domain.model.Forwarding
 import com.intercept.domain.model.RiskLevel
 import com.intercept.domain.model.SecurityReport
 import com.intercept.domain.model.Sig
@@ -101,6 +102,20 @@ class InterceptRepositoryImpl(
         true
     } catch (_: Exception) {
         false
+    }
+
+    override suspend fun forwarding(): Forwarding = try {
+        val d = api.forwarding()
+        Forwarding(
+            configured = d.configured, number = d.number,
+            busyActivate = d.busyActivate, busyDeactivate = d.busyDeactivate,
+            noAnswerActivate = d.noAnswerActivate, noAnswerDeactivate = d.noAnswerDeactivate,
+            reason = d.reason,
+        )
+    } catch (e: Exception) {
+        // Backend unreachable is not "not configured": say so, so the screen
+        // tells the owner to check the connection instead of the number.
+        Forwarding(configured = false, reason = e.message.orEmpty())
     }
 
     override suspend fun liveSessions(): List<com.intercept.domain.model.LiveSession> = try {

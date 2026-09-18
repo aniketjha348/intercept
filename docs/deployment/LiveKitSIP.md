@@ -83,6 +83,24 @@ a real session either way.
 `metadata.session_id` is optional: supply it only if you create the session
 *before* the call arrives.
 
+## 4b. In-app activation (ASSISTANT_FORWARD_NUMBER)
+
+The app points the carrier at the number for you: **Home → "Let the AI answer
+my calls"**. Two settings make it work:
+
+- `ASSISTANT_FORWARD_NUMBER` (backend env) — the number from step 2. The app
+  fetches it from `GET /assistant/forwarding`, which also returns the USSD
+  codes to dial (`*67*<number>#` = forward when busy, `##67#` = clear).
+- The screen dials that code, then sets `forwarding_on` on the device.
+
+After that, `InterceptScreeningService` **declines** an unknown call, the
+carrier forwards it to the number, and the AI answers. Saved contacts always
+ring through. Turning forwarding off in the same screen dials `##67#` and
+`##61#`.
+
+Because this is a carrier setting, it is billed by the network and outlives the
+app — the screen says so, and tells the owner to clear it before uninstalling.
+
 ## 5. Run + verify
 
 ```bash
@@ -111,3 +129,5 @@ Then:
 | AI speaks, but `/calls/live` and the report are empty | backend unreachable from the agent, or wrong `INTERCEPT_API` |
 | Two calls interfere / closing line only once | should be fixed by per-job `CallState`; if seen, the worker is running an old build |
 | Room name leaks the caller's number | expected for an individual rule — switch to a specific-room rule |
+| Calls ring instead of going to the AI | forwarding not armed, or the carrier rejected the code — re-arm from Home; some carriers want `**67*` |
+| AI answers but the owner also hears it | on-device answer path was used, not forwarding — check `forwarding_on` and that `InterceptInCallService` did not auto-answer |

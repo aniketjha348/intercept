@@ -52,7 +52,10 @@ class InterceptInCallService : InCallService() {
         // switch on the moment the OS delivers the call.
         val auto = try {
             val container = applicationContext.appContainer()
-            container.autoCalls && ContactHelper.isUnknown(this, number)
+            // Forwarding armed: the call is being handed to the carrier, so we
+            // must NOT answer on-device and hijack the forward.
+            !container.forwardingOn && container.autoCalls &&
+                ContactHelper.isUnknown(this, number)
         } catch (_: Exception) {
             false
         }

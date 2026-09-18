@@ -8,6 +8,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.intercept.di.AppContainer
 import com.intercept.presentation.analyze.AnalyzeScreen
+import com.intercept.presentation.forwarding.ForwardingScreen
 import com.intercept.presentation.home.HomeScreen
 import com.intercept.presentation.incoming.IncomingCallScreen
 import com.intercept.presentation.live.LiveCallScreen
@@ -22,6 +23,7 @@ object Routes {
     const val REPORTS = "reports"
     const val SETTINGS = "settings"
     const val SETUP = "setup"
+    const val FORWARDING = "forwarding"
     const val LIVE = "live/{sid}"
     fun live(sid: String) = "live/$sid"
 }
@@ -52,5 +54,6 @@ fun NavGraph(
         composable(Routes.ANALYZE) { AnalyzeScreen(nav, container) }
         composable(Routes.REPORTS) { ReportsScreen(nav, container) }
         composable(Routes.SETTINGS) { SettingsScreen(nav, container) }
+        composable(Routes.FORWARDING) { ForwardingScreen(nav, container) }
     }
 }
