@@ -69,6 +69,63 @@ def test_spoofed_brand_domain_still_high():
     assert r.risk_score >= 50, r
 
 
+def test_owner_name_echoed_never_persisted():
+    from fastapi.testclient import TestClient
+    from app.ai.memory import CallMemory
+    from app.main import app
+    c = TestClient(app)
+    r = c.post("/calls/start",
+               json={"caller": "x", "owner_name": "Ramesh"}).json()
+    assert r["owner_name"] == "Ramesh"
+    mem = CallMemory()
+    mem.owner = "Ramesh"
+    assert "owner=Ramesh" in mem.summary()
+    assert CallMemory().summary().find("owner=") == -1
+
+
+def test_say_relay_queues_message():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    c = TestClient(app)
+    sid = c.post("/calls/start", json={"caller": "relay-test"}).json()["session_id"]
+    r = c.post(f"/calls/{sid}/say", json={"text": "Who is calling, please?"})
+    assert r.status_code == 200 and r.json()["event"] == "RELAY_QUEUED"
+    assert c.post(f"/calls/{sid}/say", json={"text": "  "}).status_code == 422
+    assert c.post("/calls/NOPE/say", json={"text": "hi"}).status_code == 404
+
+
+def test_language_sticks_per_turn():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    c = TestClient(app)
+    sid = c.post("/calls/start", json={"caller": "lang-test"}).json()["session_id"]
+    # Roman Hindi -> hinglish, and the session follows it.
+    c.post(f"/calls/{sid}/transcript",
+           json={"text": "SBI bank KYC vibhag se bol raha hoon", "speaker": "caller"})
+    hg = c.post(f"/calls/{sid}/speak", json={"text": "hello"}).json()
+    assert hg["language"] == "hinglish", hg
+    # Devanagari -> hi, session follows again.
+    c.post(f"/calls/{sid}/transcript",
+           json={"text": "मैं SBI बैंक से बोल रहा हूँ", "speaker": "caller"})
+    hi = c.post(f"/calls/{sid}/speak", json={"text": "hello"}).json()
+    assert hi["language"] == "hi", hi
+    # Plain English -> en.
+    c.post(f"/calls/{sid}/transcript",
+           json={"text": "Hello, I am calling from SBI bank head office", "speaker": "caller"})
+    en = c.post(f"/calls/{sid}/speak", json={"text": "hello"}).json()
+    assert en["language"] == "en", en
+
+
+def test_turn_carries_claimed_org():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    c = TestClient(app)
+    sid = c.post("/calls/start", json={"caller": "org-test"}).json()["session_id"]
+    r = c.post(f"/calls/{sid}/transcript",
+               json={"text": "SBI bank here", "speaker": "caller"}).json()
+    assert "claimed_org" in r, r.keys()
+
+
 def test_speak_graceful_without_key(monkeypatch):
     monkeypatch.setattr("app.core_config.GOOGLE_API_KEY", "")
     from fastapi.testclient import TestClient

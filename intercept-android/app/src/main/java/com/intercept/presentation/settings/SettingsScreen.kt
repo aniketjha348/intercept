@@ -160,6 +160,8 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
 
     var autoApps by remember { mutableStateOf(container.autoApps) }
 
+    var owner by remember { mutableStateOf(container.ownerName) }
+
     var overlay by remember { mutableStateOf(container.overlayOn) }
 
     var status by remember { mutableStateOf<StatusMsg?>(null) }
@@ -372,6 +374,15 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
                 checked = tts,
 
             ) { tts = it; container.ttsEnabled = it }
+
+            TextField(
+                value = owner,
+                onValueChange = { owner = it; container.ownerName = it },
+                label = { Text("Your first name (optional)") },
+                placeholder = { Text("Guardian talks like family") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             SwitchRow(
 

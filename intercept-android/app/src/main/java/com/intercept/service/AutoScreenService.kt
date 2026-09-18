@@ -147,7 +147,7 @@ class AutoScreenService : Service() {
             return
         }
         val sid = try {
-            container.repo.startCall(number.ifEmpty { "Unknown" })
+            container.repo.startCall(number.ifEmpty { "Unknown" }, container.ownerName)
         } catch (_: Exception) {
             return
         }

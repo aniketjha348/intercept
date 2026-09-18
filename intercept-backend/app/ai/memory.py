@@ -15,6 +15,8 @@ class CallMemory:
     risk_signals: list[str] = field(default_factory=list)
     turns: int = 0
     current_risk: int = 0
+    # Who we protect (session-only, never persisted — see privacy promise).
+    owner: str = ""
 
     def update(self, caller_text: str, signals: list[Signal], risk: int) -> None:
         import re
@@ -31,5 +33,6 @@ class CallMemory:
                 self.requested.append(s.code)
 
     def summary(self) -> str:
-        return (f"org={self.claimed_org} purpose={self.purpose} "
+        base = (f"org={self.claimed_org} purpose={self.purpose} "
                 f"requested={self.requested} risk={self.current_risk} turns={self.turns}")
+        return base + (f" owner={self.owner}" if self.owner else "")

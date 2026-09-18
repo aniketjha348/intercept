@@ -27,8 +27,12 @@ async def call_socket(ws: WebSocket, session_id: str):
             kind = msg.get("type", "caller_turn")
             if kind == "caller_turn":
                 text = msg.get("text", "")
-                if msg.get("language"):
-                    sess.language = msg["language"]
+                pinned = (msg.get("language") or "").lower()
+                if pinned in ("hi", "hinglish", "en"):
+                    sess.language = pinned
+                    lang = pinned
+                else:
+                    lang = "auto"
                 sess.transcript.append({"speaker": "caller", "text": text})
                 await ws.send_json(_ev("TRANSCRIPT_UPDATED", session_id,
                                        speaker="caller", text=text))
@@ -36,8 +40,9 @@ async def call_socket(ws: WebSocket, session_id: str):
                     session_id=session_id, channel=Channel.CALL,
                     source=Source(type="UNKNOWN_CALLER", identifier=sess.caller),
                     content=Content(text=text)), memory=sess.memory,
-                    user_memory=sess.scam_memory, language=sess.language)
+                    user_memory=sess.scam_memory, language=lang)
                 sess.last_result = result
+                sess.language = result.language
                 sess.transcript.append({"speaker": "intercept", "text": result.guardian_reply})
                 for s in result.signals:
                     await ws.send_json(_ev("SIGNAL_DETECTED", session_id,

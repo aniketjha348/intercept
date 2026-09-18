@@ -13,6 +13,7 @@ class CallSession:
     id: str
     caller: str
     language: str = "auto"
+    owner_name: str = ""
     memory: CallMemory = field(default_factory=CallMemory)
     scam_memory: ScamMemory = field(default_factory=ScamMemory)
     transcript: list[dict] = field(default_factory=list)

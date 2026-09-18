@@ -174,7 +174,7 @@ fun IncomingCallScreen(nav: NavController, container: AppContainer) {
                         container.pendingRealRinging = ringingNow && !answered
                         scope.launch {
                             try {
-                                val sid = container.repo.startCall(caller)
+                                val sid = container.repo.startCall(caller, container.ownerName)
                                 container.sessionCallers[sid] = caller
                                 container.lastSessionId = sid
                                 nav.navigate(Routes.live(sid)) {

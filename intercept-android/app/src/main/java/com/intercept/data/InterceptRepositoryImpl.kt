@@ -22,8 +22,8 @@ class InterceptRepositoryImpl(
     private val lang: () -> String = { "auto" },
 ) : InterceptRepository {
 
-    override suspend fun startCall(caller: String): String =
-        api.startCall(StartCallRequest(caller, language = lang())).sessionId
+    override suspend fun startCall(caller: String, owner: String): String =
+        api.startCall(StartCallRequest(caller, language = lang(), ownerName = owner)).sessionId
 
     override suspend fun sendCallerTurn(sessionId: String, text: String): TurnResult {
         val r = api.sendTurn(sessionId, TurnRequest(text, language = lang()))

@@ -88,6 +88,14 @@ class AppContainer(context: Context) {
         get() = prefs.getBoolean("overlay_on", false)
         set(v) = prefs.edit().putBoolean("overlay_on", v).apply()
 
+    /**
+     * Owner's first name (optional, session-only): the guardian talks like
+     * family — "Ramesh ji is busy". Never gates setup, never persisted server-side.
+     */
+    var ownerName: String
+        get() = prefs.getString("owner_name", "") ?: ""
+        set(v) = prefs.edit().putString("owner_name", v.trim().take(60)).apply()
+
     /** Set by screening service / home demo so routes stay free of special chars. */
     var pendingIncomingCaller: String? = null
     val sessionCallers = mutableMapOf<String, String>()
