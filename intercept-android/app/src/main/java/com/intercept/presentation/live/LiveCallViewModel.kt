@@ -451,12 +451,36 @@ class LiveCallViewModel(
     }
 
     fun takeover() = viewModelScope.launch {
+        // Stop AI listening — user is talking directly now.
+        try {
+            stt?.stop()
+        } catch (_: Exception) {
+        }
+        stt = null
         try {
             container.repo.takeover(sessionId)
         } catch (_: Exception) {
         }
         socket?.sendTakeover()
-        _state.update { it.copy(humanMode = true) }
+        // Switch to speaker so the USER can talk to the caller directly.
+        // AI is off mic now — this is a normal hands-free call.
+        try {
+            InterceptInCallService.setSpeaker(true)
+        } catch (_: Exception) {
+        }
+        try {
+            container.stopVoice()
+        } catch (_: Exception) {
+        }
+        // Restore normal mic mode so the user's voice goes through the
+        // call naturally (not routed through the call-stream path).
+        try {
+            val am = container.appContextForVoice().getSystemService(android.content.Context.AUDIO_SERVICE)
+                as android.media.AudioManager
+            am.mode = android.media.AudioManager.MODE_IN_CALL
+        } catch (_: Exception) {
+        }
+        _state.update { it.copy(humanMode = true, listening = false) }
     }
 
     fun endCall() = viewModelScope.launch {

@@ -18,10 +18,14 @@ Worker registers as `intercept-agent`. Keep it running on the demo laptop
 `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `GOOGLE_API_KEY`
 (+ optional `LIVE_MODEL`, `INTERCEPT_API`).
 
-## Wire the free US number (dashboard, once)
+## Wire the number (dashboard, once)
 
 Telephony → Phone Numbers → your number → Assign dispatch rule
 (`Intercept Incoming Calls`, room prefix `intercept-`, agent `intercept-agent`).
+Put who the call is for in the rule's `roomConfig` metadata — the agent reads it
+as `ctx.job.metadata` and links the call to a backend session via
+`POST /calls/inbound` (reusing the app's session when the call was answered on
+the phone first). Full JSON + troubleshooting: [`docs/deployment/LiveKitSIP.md`](../docs/deployment/LiveKitSIP.md).
 
 ## Judge demo (60 seconds)
 
