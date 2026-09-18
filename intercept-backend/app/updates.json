@@ -78,5 +78,19 @@
       "ऐप के अंदर अपडेट — नए Android पर क्रैश नहीं",
       "हमेशा एक ही सिग्नेचर — अपडेट पुराने ऐप पर चढ़ेगा"
     ]
+  },
+  {
+    "version_code": 6,
+    "version_name": "0.3.3",
+    "date": "2026-09-18",
+    "force": false,
+    "notes_en": [
+      "v0.3.3: cleartext pilot + dialer grant hint (feeds auto via CI)",
+      "Release automation: tag writes both changelogs itself (zero manual edits)"
+    ],
+    "notes_hi": [
+      "Is version me taze fixes aur sudhaar",
+      "App kholte hi update mil jayega"
+    ]
   }
 ]
