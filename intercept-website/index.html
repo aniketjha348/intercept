@@ -23,7 +23,13 @@
       <a href="updates.html">Updates</a>
       <a href="privacy.html">Privacy</a>
     </nav>
-    <a class="btn primary nav-cta" href="download.html">Get the app</a>
+    <div class="nav-actions">
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark and light theme" title="Toggle theme">
+        <svg class="theme-icon-light" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        <svg class="theme-icon-dark" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      </button>
+      <a class="btn primary nav-cta" href="download.html">Get the app</a>
+    </div>
   </div>
 </header>
 
@@ -37,53 +43,72 @@
     <p class="lede">Intercept AI picks up unknown numbers, talks to the caller, and checks every message, link and QR — in Hindi, Hinglish and English — before an OTP ever leaves your phone.</p>
     <p class="langline" lang="hi"><span class="lang-pill">हिन्दी</span> खतरे और आपके बीच — Intercept AI।</p>
 
-    <!-- The most characteristic thing in this product's world is a scam being
-         taken apart in real time, so that is what the page opens with. -->
-    <div class="room" id="room">
-      <div class="room-bar">
-        <span class="live"><span class="livedot"></span>Screening Call</span>
-        <span class="room-waves" aria-hidden="true">
-          <i></i><i></i><i></i><i></i>
-        </span>
-        <span class="num">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-2.2 2.2a15.053 15.053 0 01-6.59-6.59l2.2-2.21a.96.96 0 00.25-1A11.36 11.36 0 018.57 3.9c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.52c0-.55-.45-1-.99-1z"/></svg>
-          +91 98XXX XXXXX
-        </span>
-        <span class="clock">00:41</span>
+    <!-- Interactive Call Interception Simulator -->
+    <div class="room-container">
+      <div class="scenario-selector-bar">
+        <span class="scenario-label">Try live scenario:</span>
+        <div class="scenario-pills">
+          <button type="button" class="scenario-pill active" data-scenario="kyc">🏦 Bank KYC OTP</button>
+          <button type="button" class="scenario-pill" data-scenario="police">👮 Police / Digital Arrest</button>
+          <button type="button" class="scenario-pill" data-scenario="power">⚡ Electricity Cutoff</button>
+          <button type="button" class="scenario-pill" data-scenario="family">💚 Safe Family Call</button>
+        </div>
       </div>
-      <div class="rail-row">
-        <span>Risk Assessment</span>
-        <span class="score">95 <span class="score-max">/ 100</span></span>
+
+      <div class="room" id="room">
+        <div class="room-bar">
+          <div class="room-status-wrap">
+            <span class="live"><span class="livedot"></span>Screening Call</span>
+            <span class="room-waves" aria-hidden="true">
+              <i></i><i></i><i></i><i></i>
+            </span>
+          </div>
+          <span class="num">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-2.2 2.2a15.053 15.053 0 01-6.59-6.59l2.2-2.21a.96.96 0 00.25-1A11.36 11.36 0 018.57 3.9c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.52c0-.55-.45-1-.99-1z"/></svg>
+            +91 98XXX XXXXX
+          </span>
+          <div class="room-actions-bar">
+            <button class="room-icon-btn" id="sound-toggle" type="button" aria-pressed="false" title="Toggle audio feedback">🔇 Sound: Off</button>
+            <button class="room-icon-btn" id="replay-sim" type="button" title="Replay simulation">↻ Replay</button>
+            <span class="clock">00:41</span>
+          </div>
+        </div>
+        <div class="rail-row">
+          <span>Risk Assessment</span>
+          <span class="score">95 <span class="score-max">/ 100</span></span>
+        </div>
+        <div class="rail" aria-hidden="true">
+          <i class="seg-authority"></i><i class="seg-otp"></i>
+        </div>
+        <ol class="turns">
+          <li class="turn from-caller">
+            <div class="turn-header">
+              <span class="who">Caller</span>
+              <span class="turn-time">00:12</span>
+            </div>
+            <p class="said">Main SBI bank KYC department se bol raha hoon. 2 ghante me khata band ho jayega.</p>
+            <p class="signal"><span>⚑ Authority claim</span><span class="delta">+18</span></p>
+          </li>
+          <li class="turn from-guard">
+            <div class="turn-header">
+              <span class="who">Intercept AI</span>
+              <span class="guardian-shield">AI Shield</span>
+              <span class="turn-time">00:24</span>
+            </div>
+            <p class="said">Namaste! Main Intercept hoon. Kripya apna employee ID aur branch code batayein.</p>
+          </li>
+          <li class="turn from-caller is-crit">
+            <div class="turn-header">
+              <span class="who">Caller</span>
+              <span class="crit-alert">Critical Alert</span>
+              <span class="turn-time">00:39</span>
+            </div>
+            <p class="said">Turant OTP batao, verification ke liye. Time nahi hai!</p>
+            <p class="signal"><span>⚑ OTP demand · urgency</span><span class="delta">+77</span></p>
+          </li>
+        </ol>
+        <p class="cutline"><span class="bar"></span><span class="cut-icon">⚡</span> Line cut — OTP demand intercepted before caller spoke</p>
       </div>
-      <div class="rail" aria-hidden="true">
-        <i class="seg-authority"></i><i class="seg-otp"></i>
-      </div>
-      <ol class="turns">
-        <li class="turn from-caller">
-          <div class="turn-header">
-            <span class="who">Caller</span>
-            <span class="turn-time">00:12</span>
-          </div>
-          <p class="said">Main SBI bank KYC department se bol raha hoon. 2 ghante me khata band ho jayega.</p>
-          <p class="signal"><span>⚑ Authority claim</span><span class="delta">+18</span></p>
-        </li>
-        <li class="turn from-guard">
-          <div class="turn-header">
-            <span class="who">Intercept AI</span>
-            <span class="guardian-shield">AI Shield</span>
-          </div>
-          <p class="said">Namaste! Main Intercept hoon. Kripya apna employee ID batayein.</p>
-        </li>
-        <li class="turn from-caller is-crit">
-          <div class="turn-header">
-            <span class="who">Caller</span>
-            <span class="crit-alert">Critical Alert</span>
-          </div>
-          <p class="said">Turant OTP batao, verification ke liye.</p>
-          <p class="signal"><span>⚑ OTP demand · urgency</span><span class="delta">+77</span></p>
-        </li>
-      </ol>
-      <p class="cutline"><span class="bar"></span><span class="cut-icon">⚡</span> Line cut — OTP request detected</p>
     </div>
 
     <div class="cta-row">
@@ -177,6 +202,55 @@
       </div>
     </div>
     <div class="ramp-scale"><span>Risk score 0 (Safe)</span><span>100 (Immediate Threat)</span></div>
+
+    <!-- Tactical Risk Calculator Interactive Widget -->
+    <div class="calculator-box">
+      <div class="calc-toggles">
+        <div style="margin-bottom: 8px;">
+          <span class="fieldlabel" style="margin: 0;">Tactical Risk Calculator</span>
+          <p class="muted small" style="margin: 4px 0 0;">Toggle scam indicators to see Scam DNA score any attack in real time:</p>
+        </div>
+        <div class="calc-toggle active danger" data-points="50">
+          <div class="calc-toggle-left">
+            <div class="calc-checkbox"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+            <span>Demands Immediate OTP / UPI PIN</span>
+          </div>
+          <span class="calc-pts">+50 pts</span>
+        </div>
+        <div class="calc-toggle active danger" data-points="25">
+          <div class="calc-toggle-left">
+            <div class="calc-checkbox"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+            <span>Impersonates Bank / CBI / Police Authority</span>
+          </div>
+          <span class="calc-pts">+25 pts</span>
+        </div>
+        <div class="calc-toggle active" data-points="20">
+          <div class="calc-toggle-left">
+            <div class="calc-checkbox"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+            <span>Artificial Urgency ("Within 2 Hours")</span>
+          </div>
+          <span class="calc-pts">+20 pts</span>
+        </div>
+        <div class="calc-toggle" data-points="35">
+          <div class="calc-toggle-left">
+            <div class="calc-checkbox"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+            <span>Requires Installing Remote Access APK</span>
+          </div>
+          <span class="calc-pts">+35 pts</span>
+        </div>
+      </div>
+
+      <div class="calc-gauge-card">
+        <div class="calc-dial">
+          <div class="calc-arc"></div>
+          <div class="calc-needle" id="calc-needle"></div>
+          <div class="calc-needle-pivot"></div>
+        </div>
+        <div class="calc-score-big" id="calc-score-num">95</div>
+        <span class="calc-verdict-pill tier-pill-crit" id="calc-verdict-pill">Critical Threat</span>
+        <p class="calc-desc" id="calc-verdict-desc">Critical fraud attempt detected. Intercept AI automatically terminates the call and prevents OTP forwarding.</p>
+      </div>
+    </div>
     
     <div class="langs-wrap">
       <span class="langs-label">Engine Languages:</span>
@@ -368,7 +442,6 @@
     show('<p class="muted">Checking with risk engine…</p>');
 
     if (base.indexOf("YOUR-API-URL") !== -1) {
-      // Offline / standalone preview mode: run on-device heuristics immediately
       setTimeout(function () {
         var res = analyzeLocalFallback(text);
         renderResult(res.level, res.risk, res.user_message, res.why, res.source);
@@ -411,7 +484,6 @@
     entries.forEach(function (e) { if (e.isIntersecting) { live(); io.disconnect(); } });
   }, { threshold: 0.25 });
   io.observe(room);
-  // Safety net: the rail carries meaning, so never leave it empty
   setTimeout(live, 2000);
 })();
 </script>
