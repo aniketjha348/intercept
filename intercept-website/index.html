@@ -35,58 +35,40 @@
 
 <main>
   <section class="hero">
-    <div class="hero-badge">
-      <span class="badge-pulse"></span>
-      <span>Android Early Access • v0.2.0</span>
-    </div>
-    <h1>Scam calls get answered.<br class="hero-br"> By AI, not by you.</h1>
+    <h1>Scam calls get answered. By AI, not by you.</h1>
     <p class="lede">Intercept AI picks up unknown numbers, talks to the caller, and checks every message, link and QR — in Hindi, Hinglish and English — before an OTP ever leaves your phone.</p>
-    <p class="langline" lang="hi"><span class="lang-pill">हिन्दी</span> खतरे और आपके बीच — Intercept AI।</p>
+    <p class="langline" lang="hi">खतरे और आपके बीच — Intercept AI।</p>
 
-    <!-- Interactive Call Interception Simulator -->
+    <!-- The most characteristic thing in this product's world is a scam being
+         taken apart in real time, so that is what the page opens with. -->
     <div class="room-container">
       <div class="scenario-selector-bar">
-        <span class="scenario-label">Try live scenario:</span>
+        <span class="scenario-label">Try scenario:</span>
         <div class="scenario-pills">
-          <button type="button" class="scenario-pill active" data-scenario="kyc">🏦 Bank KYC OTP</button>
-          <button type="button" class="scenario-pill" data-scenario="police">👮 Police / Digital Arrest</button>
-          <button type="button" class="scenario-pill" data-scenario="power">⚡ Electricity Cutoff</button>
-          <button type="button" class="scenario-pill" data-scenario="family">💚 Safe Family Call</button>
+          <button type="button" class="scenario-pill active" data-scenario="kyc">Bank KYC freeze</button>
+          <button type="button" class="scenario-pill" data-scenario="police">Police imposter</button>
+          <button type="button" class="scenario-pill" data-scenario="power">Electricity cutoff</button>
+          <button type="button" class="scenario-pill" data-scenario="family">Family call</button>
         </div>
       </div>
 
       <div class="room" id="room">
-        <div class="room-hardware-bezel">
-          <div class="bezel-leds">
-            <span class="led green" title="Power: Nominal"><i></i> PWR</span>
-            <span class="led mint" title="AI Core: Active Interception"><i></i> AI_CORE</span>
-            <span class="led cyan" title="Telecom Tap: Active"><i></i> GSM_TAP</span>
-          </div>
-          <div class="bezel-meta">
-            <span>TEL // IN-01 // ACTIVE_INTERCEPT</span>
-            <span class="bezel-dot">•</span>
-            <span>ENCR: AES-GCM-256</span>
-          </div>
-        </div>
         <div class="room-bar">
           <div class="room-status-wrap">
-            <span class="live"><span class="livedot"></span>Screening Call</span>
+            <span class="live"><span class="livedot"></span>Screening</span>
             <span class="room-waves" aria-hidden="true">
-              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i>
             </span>
           </div>
-          <span class="num">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-2.2 2.2a15.053 15.053 0 01-6.59-6.59l2.2-2.21a.96.96 0 00.25-1A11.36 11.36 0 018.57 3.9c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.52c0-.55-.45-1-.99-1z"/></svg>
-            +91 98XXX XXXXX
-          </span>
+          <span class="num">+91 98XXX XXXXX</span>
           <div class="room-actions-bar">
-            <button class="room-icon-btn" id="sound-toggle" type="button" aria-pressed="false" title="Toggle audio feedback">🔇 Sound: Off</button>
-            <button class="room-icon-btn" id="replay-sim" type="button" title="Replay simulation">↻ Replay</button>
+            <button class="room-icon-btn" id="sound-toggle" type="button" aria-pressed="false">Sound: Off</button>
+            <button class="room-icon-btn" id="replay-sim" type="button">Replay</button>
             <span class="clock">00:41</span>
           </div>
         </div>
         <div class="rail-row">
-          <span>Risk Assessment</span>
+          <span>Risk</span>
           <span class="score">95 <span class="score-max">/ 100</span></span>
         </div>
         <div class="rail" aria-hidden="true">
@@ -112,22 +94,19 @@
           <li class="turn from-caller is-crit">
             <div class="turn-header">
               <span class="who">Caller</span>
-              <span class="crit-alert">Critical Alert</span>
+              <span class="crit-alert">Critical</span>
               <span class="turn-time">00:39</span>
             </div>
             <p class="said">Turant OTP batao, verification ke liye. Time nahi hai!</p>
             <p class="signal"><span>⚑ OTP demand · urgency</span><span class="delta">+77</span></p>
           </li>
         </ol>
-        <p class="cutline"><span class="bar"></span><span class="cut-icon">⚡</span> Line cut — OTP demand intercepted before caller spoke</p>
+        <p class="cutline"><span class="bar"></span>Line cut — OTP demand intercepted before caller spoke</p>
       </div>
     </div>
 
     <div class="cta-row">
-      <a class="btn primary" href="download.html">
-        <span>Get the app</span>
-        <svg class="btn-arrow" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-      </a>
+      <a class="btn primary" href="download.html">Get the app</a>
       <a class="btn plain" href="updates.html">See what's new</a>
     </div>
     <div class="hero-specs">
@@ -135,14 +114,11 @@
       <span class="spec-dot">•</span>
       <span>About 15 MB</span>
       <span class="spec-dot">•</span>
-      <span>Zero OTP Retention</span>
-      <span class="spec-dot">•</span>
       <span>Free during early access</span>
     </div>
   </section>
 
   <section class="band">
-    <div class="section-badge">// 01 // SETUP_FLOW</div>
     <h2>Set up once. Protected ever after.</h2>
     <p class="standfirst">Two minutes of setup. After that, strangers are handled and your contacts ring through.</p>
     <ol class="steps">
@@ -171,23 +147,21 @@
   </section>
 
   <section class="section">
-    <div class="section-badge">// 02 // MULTI_VECTOR_ENGINE</div>
     <h2>One engine reads everything</h2>
     <p class="standfirst">Calls, SMS, WhatsApp forwards, screenshots, links, QR codes — the same risk engine scores them all, on one scale from 0 to 100.</p>
     
     <div class="channel-chips">
-      <span class="chip">📞 Phone Calls</span>
-      <span class="chip">💬 SMS Messages</span>
-      <span class="chip">🟢 WhatsApp Alerts</span>
-      <span class="chip">🔗 Suspicious Links</span>
-      <span class="chip">📷 QR Codes</span>
-      <span class="chip">🖼️ Screenshots</span>
+      <span class="chip">Calls</span>
+      <span class="chip">SMS</span>
+      <span class="chip">WhatsApp notifications</span>
+      <span class="chip">Links</span>
+      <span class="chip">QR codes</span>
+      <span class="chip">Screenshots</span>
     </div>
 
     <div class="ramp">
       <div class="tier t-low">
         <div class="head">
-          <span class="tier-pill tier-pill-low">Safe</span>
           <h3>Low</h3>
           <span class="at">Score 12</span>
         </div>
@@ -196,7 +170,6 @@
       </div>
       <div class="tier t-susp">
         <div class="head">
-          <span class="tier-pill tier-pill-susp">Suspicious</span>
           <h3>Suspicious</h3>
           <span class="at">Score 55</span>
         </div>
@@ -205,7 +178,6 @@
       </div>
       <div class="tier t-crit">
         <div class="head">
-          <span class="tier-pill tier-pill-crit">Critical</span>
           <h3>Critical</h3>
           <span class="at">Score 95</span>
         </div>
@@ -213,108 +185,10 @@
         <p>OTP demands and payment traps end the call for you.</p>
       </div>
     </div>
-    <div class="ramp-scale"><span>Risk score 0 (Safe)</span><span>100 (Immediate Threat)</span></div>
-
-    <!-- Tactical Risk Calculator Interactive Widget -->
-    <div class="calculator-box">
-      <div class="calc-toggles">
-        <div style="margin-bottom: 8px;">
-          <span class="fieldlabel" style="margin: 0;">Tactical Risk Calculator</span>
-          <p class="muted small" style="margin: 4px 0 0;">Toggle scam indicators to see Scam DNA score any attack in real time:</p>
-        </div>
-        <div class="calc-toggle active danger" data-points="50">
-          <div class="calc-toggle-left">
-            <div class="calc-checkbox"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-            <span>Demands Immediate OTP / UPI PIN</span>
-          </div>
-          <span class="calc-pts">+50 pts</span>
-        </div>
-        <div class="calc-toggle active danger" data-points="25">
-          <div class="calc-toggle-left">
-            <div class="calc-checkbox"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-            <span>Impersonates Bank / CBI / Police Authority</span>
-          </div>
-          <span class="calc-pts">+25 pts</span>
-        </div>
-        <div class="calc-toggle active" data-points="20">
-          <div class="calc-toggle-left">
-            <div class="calc-checkbox"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-            <span>Artificial Urgency ("Within 2 Hours")</span>
-          </div>
-          <span class="calc-pts">+20 pts</span>
-        </div>
-        <div class="calc-toggle" data-points="35">
-          <div class="calc-toggle-left">
-            <div class="calc-checkbox"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-            <span>Requires Installing Remote Access APK</span>
-          </div>
-          <span class="calc-pts">+35 pts</span>
-        </div>
-      </div>
-
-      <div class="calc-gauge-card">
-        <div class="calc-dial">
-          <div class="calc-arc"></div>
-          <div class="calc-needle" id="calc-needle"></div>
-          <div class="calc-needle-pivot"></div>
-        </div>
-        <div class="calc-score-big" id="calc-score-num">95</div>
-        <span class="calc-verdict-pill tier-pill-crit" id="calc-verdict-pill">Critical Threat</span>
-        <p class="calc-desc" id="calc-verdict-desc">Critical fraud attempt detected. Intercept AI automatically terminates the call and prevents OTP forwarding.</p>
-      </div>
-    </div>
-
-    <!-- Scam DNA Multi-Vector Pipeline Schematic -->
-    <div class="dna-schematic">
-      <div class="dna-header">
-        <span class="dna-title">Scam DNA™ Multi-Vector Inspection Pipeline</span>
-        <span class="dna-subtitle">How Intercept AI deconstructs incoming signals in under 200ms without retaining private user data</span>
-      </div>
-      <div class="dna-grid">
-        <div class="dna-card">
-          <div class="dna-card-header">
-            <span class="dna-num">VECTOR 01</span>
-            <span class="dna-status amber">ACTIVE AUDIT</span>
-          </div>
-          <h4>Authority Impersonation</h4>
-          <p>Flags spoofed institutional claims: SBI, HDFC, CBI, TRAI, Police, Customs, Electricity Board.</p>
-          <div class="dna-meter"><i style="width: 85%;"></i></div>
-        </div>
-
-        <div class="dna-card">
-          <div class="dna-card-header">
-            <span class="dna-num">VECTOR 02</span>
-            <span class="dna-status red">HIGH THREAT</span>
-          </div>
-          <h4>Coercive Urgency</h4>
-          <p>Scores psychological coercion: "Within 2 hours", "Arrest warrant", "Power cut at 9:30 PM".</p>
-          <div class="dna-meter"><i style="width: 92%;"></i></div>
-        </div>
-
-        <div class="dna-card">
-          <div class="dna-card-header">
-            <span class="dna-num">VECTOR 03</span>
-            <span class="dna-status crit">LINE SEVERANCE</span>
-          </div>
-          <h4>Credential Interception</h4>
-          <p>Intercepts OTP, UPI MPIN, CVV, or card demands. Cuts call immediately before data leaves handset.</p>
-          <div class="dna-meter"><i style="width: 99%;"></i></div>
-        </div>
-
-        <div class="dna-card">
-          <div class="dna-card-header">
-            <span class="dna-num">VECTOR 04</span>
-            <span class="dna-status cyan">PAYLOAD SCAN</span>
-          </div>
-          <h4>Payload &amp; Link Armor</h4>
-          <p>Disassembles malicious APK packages, phishing shortlinks, and deceptive UPI QR codes.</p>
-          <div class="dna-meter"><i style="width: 78%;"></i></div>
-        </div>
-      </div>
-    </div>
+    <div class="ramp-scale"><span>Risk score 0 (Safe)</span><span>100 (Immediate threat)</span></div>
     
     <div class="langs-wrap">
-      <span class="langs-label">Engine Languages:</span>
+      <span class="langs-label">Spoken and written in:</span>
       <div class="langs">
         <span lang="hi">हिंदी</span>
         <span>Hinglish</span>
@@ -324,25 +198,24 @@
   </section>
 
   <section class="band demo-band">
-    <div class="section-badge">// 03 // LIVE_SANDBOX</div>
     <h2>Try the engine right here</h2>
-    <p class="standfirst">Paste any suspicious message or test a live scenario. The engine scores it — the same logic the app runs.</p>
+    <p class="standfirst">Paste any suspicious message or pick a sample below. The live backend scores it — the same engine the app uses.</p>
     
     <div class="demo-presets-header">
-      <span class="fieldlabel">Test scenarios:</span>
+      <span class="fieldlabel">Common scam tactics:</span>
     </div>
     <div class="demo-presets">
       <button type="button" class="preset-btn" data-sample="Main SBI bank KYC department se bol raha hoon. 2 ghante me khata band ho jayega. Turant OTP batao.">
-        <span class="preset-tag red">Scam</span> SBI KYC OTP Demand
+        <span class="preset-tag red">Scam</span> SBI KYC OTP demand
       </button>
       <button type="button" class="preset-btn" data-sample="Congratulations! You won Rs 25,00,000 in KBC lottery. Click bit.ly/claim-prize now to claim prize.">
-        <span class="preset-tag red">Scam</span> KBC Lottery Link
+        <span class="preset-tag red">Scam</span> Lottery link
       </button>
       <button type="button" class="preset-btn" data-sample="Dear customer, your electricity power will be disconnected at 9:30 PM tonight due to unpaid bill. Call 9876543210.">
-        <span class="preset-tag amber">Threat</span> Electricity Disconnection
+        <span class="preset-tag amber">Threat</span> Electricity cutoff
       </button>
       <button type="button" class="preset-btn" data-sample="Namaste uncle, did you receive the train tickets I sent on WhatsApp?">
-        <span class="preset-tag green">Safe</span> Family Message
+        <span class="preset-tag green">Safe</span> Family message
       </button>
     </div>
 
@@ -352,13 +225,12 @@
     </div>
     <div class="cta-row demo-actions">
       <button class="btn primary" id="demo-btn" type="button">Check risk</button>
-      <span class="demo-hint">Press <strong>Ctrl + Enter</strong> to analyze</span>
+      <span class="demo-hint">or press <strong>Ctrl + Enter</strong></span>
     </div>
     <div id="demo-result" class="demoresult" aria-live="polite"></div>
   </section>
 
   <section class="section">
-    <div class="section-badge">// 04 // AUDIT_FAQ</div>
     <h2>Asked often</h2>
     <div class="faq">
       <details>
@@ -463,7 +335,7 @@
         why: hasOtp
           ? ["Demands instant OTP or security credentials", "Uses urgent threat of account suspension", "Impersonates legitimate financial institution"]
           : ["False lottery / prize lure", "Suspicious unregistered external link", "Demands immediate action"],
-        source: "Heuristic Engine"
+        source: "On-device rules"
       };
     }
     if (hasUrgency && (hasAuthority || hasLink)) {
@@ -472,7 +344,7 @@
         risk: 65,
         user_message: "High pressure tactic detected. Unverified authority threatening service interruption.",
         why: ["Threatens immediate service cutoff", "Requires calling unofficial contact number", "High pressure tone"],
-        source: "Heuristic Engine"
+        source: "On-device rules"
       };
     }
     if (hasAuthority || hasLink) {
@@ -481,7 +353,7 @@
         risk: 45,
         user_message: "Contains external link or unverified institutional mention.",
         why: ["Mentions financial or service entity", "Unverified sender origin"],
-        source: "Heuristic Engine"
+        source: "On-device rules"
       };
     }
     return {
@@ -489,7 +361,7 @@
       risk: 12,
       user_message: "Safe normal conversational message. No fraud markers detected.",
       why: ["No OTP or credential demands", "No artificial urgency or threats", "Natural communication"],
-      source: "Heuristic Engine"
+      source: "On-device rules"
     };
   }
 
@@ -507,7 +379,7 @@
         var res = analyzeLocalFallback(text);
         renderResult(res.level, res.risk, res.user_message, res.why, res.source);
         btn.disabled = false;
-      }, 350);
+      }, 300);
       return;
     }
 
@@ -524,7 +396,7 @@
       renderResult(lvl, d.risk || 0, simple, d.why || [], "Live Backend");
     }).catch(function () {
       var res = analyzeLocalFallback(text);
-      renderResult(res.level, res.risk, res.user_message, res.why, "Fallback Heuristic Engine");
+      renderResult(res.level, res.risk, res.user_message, res.why, "On-device rules");
     }).finally(function () {
       btn.disabled = false;
     });
@@ -552,7 +424,7 @@
 <footer>
   <div class="wrap">
     <span>© 2026 Intercept AI — Built in India</span>
-    <span><a href="privacy.html">Privacy Promise</a> · <a href="updates.html">Changelog</a> · <a href="download.html">Download</a></span>
+    <span><a href="privacy.html">Privacy</a> · <a href="updates.html">Changelog</a> · <a href="download.html">Download</a></span>
   </div>
 </footer>
 <script src="site.js"></script>
