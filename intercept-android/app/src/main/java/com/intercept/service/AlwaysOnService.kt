@@ -1,17 +1,11 @@
 package com.intercept.service
 
 import android.app.ActivityManager
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.IBinder
-import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import com.intercept.MainActivity
 import com.intercept.appContainer
 import com.intercept.overlay.OverlayService
 import kotlinx.coroutines.CoroutineScope
@@ -30,7 +24,8 @@ import kotlinx.coroutines.launch
  * This is what keeps that process alive: a foreground service with
  * stopWithTask=false, restarted by the OS (START_STICKY) and by the boot
  * receiver. Protection stops being something the user has to remember to keep
- * open.
+ * open. Its notification is the shared one (AutoProtectNotification), so a
+ * screened call rewrites that same line instead of posting a second entry.
  *
  * Foreground start is deliberate about WHERE it is called from: starting a
  * foreground service from the background is banned on Android 12+, and the
@@ -46,8 +41,6 @@ import kotlinx.coroutines.launch
 class AlwaysOnService : Service() {
 
     companion object {
-        private const val ONGOING_ID = 1002
-        private const val CHANNEL_ONGOING = "intercept_auto"
         private const val HEARTBEAT_MS = 60_000L
 
         /** True when at least one auto-protection surface is switched on. */
@@ -94,21 +87,15 @@ class AlwaysOnService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                getSystemService(NotificationManager::class.java)?.createNotificationChannel(
-                    NotificationChannel(
-                        CHANNEL_ONGOING, "Auto-protect", NotificationManager.IMPORTANCE_MIN
-                    )
-                )
-            }
-        } catch (_: Exception) {
-        }
+        AutoProtectNotification.ensureChannel(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         try {
-            startForeground(ONGOING_ID, notification())
+            startForeground(
+                AutoProtectNotification.ID,
+                AutoProtectNotification.build(this, AutoProtectNotification.IDLE_TEXT),
+            )
         } catch (_: Exception) {
         }
         // Nothing left to protect with: hold a notification for no reason.
@@ -148,23 +135,6 @@ class AlwaysOnService : Service() {
         if (OverlayService.isRunning(this)) return
         OverlayService.start(this)
     }
-
-    private fun notification() =
-        NotificationCompat.Builder(this, CHANNEL_ONGOING)
-            .setSmallIcon(android.R.drawable.ic_lock_lock)
-            .setContentTitle("INTERCEPT auto-protect")
-            .setContentText("Watching calls, messages and links.")
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_MIN)
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    this, 0,
-                    Intent(this, MainActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-            )
-            .build()
 
     override fun onDestroy() {
         scope.cancel()

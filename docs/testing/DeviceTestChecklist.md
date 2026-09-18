@@ -259,14 +259,21 @@ target OEMs.
 - [ ] Watch the status bar when the daemon (re)starts
 - [ ] No sound, no heads-up flash — it is `IMPORTANCE_MIN`
 
-### C11 — Known UX wrinkle: two ongoing notifications during a call
+### C11 — One ongoing notification, even mid-call
+- [ ] Note the ongoing **INTERCEPT auto-protect** entry (id 1001, channel `intercept_auto`)
 - [ ] Start a screened call (auto-answer path)
-- [ ] Check the shade
+- [ ] Check the shade: it is the **same single** entry, now reading
+      "Screening call from <number>…"
+- [ ] Tap it → the transcript opens (live-screening deep link still works)
+- [ ] End the call → the same entry returns to "Watching calls, messages and links."
+- [ ] Scan a stranger SMS (auto-scan SMS ON) → same entry, back to idle text
 
-**Expected:** you will see **two** ongoing entries — "INTERCEPT auto-protect"
-(daemon, id 1002) and the screening one (id 1001, from `AutoScreenService`).
-Both are correct; confirm on device whether it reads as broken. If it does,
-merging the two into one notification is a follow-up, not a bug in this build.
+**Expected:** exactly one ongoing entry throughout, never two, and never zero.
+Both foreground services post this same id; the screener hands the line back with
+`STOP_FOREGROUND_DETACH` instead of removing it.
+
+**If it disappears after a call** — that is the detach path failing and the
+daemon losing its own notification. Check with step C1's command.
 
 ---
 

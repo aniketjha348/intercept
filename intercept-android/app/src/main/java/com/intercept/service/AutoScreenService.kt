@@ -34,8 +34,6 @@ class AutoScreenService : Service() {
     companion object {
         private const val ACTION_SMS = "com.intercept.action.SCREEN_SMS"
         private const val ACTION_CALL = "com.intercept.action.SCREEN_CALL"
-        private const val ONGOING_ID = 1001
-        private const val CHANNEL_ONGOING = "intercept_auto"
         private const val CHANNEL_ALERT = "intercept_alert"
         private const val SMS_RISK_THRESHOLD = 25
 
@@ -79,11 +77,11 @@ class AutoScreenService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        // The ongoing line is shared with the daemon (AutoProtectNotification);
+        // only the alert channel belongs to this service alone.
+        AutoProtectNotification.ensureChannel(this)
         val nm = getSystemService(NotificationManager::class.java) ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_ONGOING, "Auto-protect", NotificationManager.IMPORTANCE_LOW)
-            )
             nm.createNotificationChannel(
                 NotificationChannel(CHANNEL_ALERT, "Threat alerts", NotificationManager.IMPORTANCE_HIGH)
             )
@@ -91,7 +89,11 @@ class AutoScreenService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(ONGOING_ID, ongoingNotification("Auto-protect is on"))
+        // Same id as the daemon: one ongoing line for the whole stack.
+        startForeground(
+            AutoProtectNotification.ID,
+            AutoProtectNotification.build(this, AutoProtectNotification.IDLE_TEXT),
+        )
         when (intent?.action) {
             ACTION_SMS -> {
                 val sender = intent.getStringExtra("sender").orEmpty()
@@ -100,7 +102,10 @@ class AutoScreenService : Service() {
                     try {
                         handleSms(sender, body)
                     } finally {
-                        if (activeCallSession == null) stopSelf(startId)
+                        if (activeCallSession == null) {
+                            releaseOngoing()
+                            stopSelf(startId)
+                        }
                     }
                 }
             }
@@ -108,7 +113,10 @@ class AutoScreenService : Service() {
                 val number = intent.getStringExtra("number").orEmpty()
                 scope.launch { handleCall(number, startId) }
             }
-            else -> if (activeCallSession == null) stopSelf(startId)
+            else -> if (activeCallSession == null) {
+                releaseOngoing()
+                stopSelf(startId)
+            }
         }
         return START_NOT_STICKY
     }
@@ -144,18 +152,20 @@ class AutoScreenService : Service() {
         val container = try {
             appContainer()
         } catch (_: Exception) {
+            bailOut(startId)
             return
         }
         val sid = try {
             container.repo.startCall(number.ifEmpty { "Unknown" }, container.ownerName)
         } catch (_: Exception) {
+            bailOut(startId)
             return
         }
         activeCallSession = sid
         activeCallNumber = number
         container.lastSessionId = sid
         container.sessionCallers[sid] = number
-        updateOngoing("Screening call from $number…")
+        AutoProtectNotification.update(this, "Screening call from $number…", sid)
         try {
             container.audio.enter()
         } catch (_: Exception) {
@@ -180,6 +190,7 @@ class AutoScreenService : Service() {
             delay(1500)
         }
         finishCall(sid, terminated = callDone.get())
+        releaseOngoing()
         stopSelf(startId)
     }
 
@@ -259,7 +270,7 @@ class AutoScreenService : Service() {
         }
         activeCallSession = null
         activeCallNumber = null
-        updateOngoing("Auto-protect is on")
+        AutoProtectNotification.update(this, AutoProtectNotification.IDLE_TEXT)
         if (terminated || risk >= 50) {
             alert(
                 id = sid.hashCode(),
@@ -272,20 +283,36 @@ class AutoScreenService : Service() {
 
     // ---- Notifications ----
 
-    private fun ongoingNotification(text: String) =
-        NotificationCompat.Builder(this, CHANNEL_ONGOING)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("INTERCEPT auto-protect")
-            .setContentText(text)
-            .setOngoing(true)
-            .setContentIntent(mainIntent())
-            .build()
+    /**
+     * Nothing to screen after all: give the ongoing line back and stand down,
+     * instead of holding the foreground (and its notification) forever.
+     */
+    private fun bailOut(startId: Int) {
+        releaseOngoing()
+        stopSelf(startId)
+    }
 
-    private fun updateOngoing(text: String) {
-        try {
-            val nm = getSystemService(NotificationManager::class.java) ?: return
-            nm.notify(ONGOING_ID, ongoingNotification(text))
+    /**
+     * Leave the foreground without taking the shared notification down.
+     *
+     * Only one notification id exists now, so a blind stopForeground(true) here
+     * would delete the daemon's own notification on its way out. When the daemon
+     * is alive the line stays with it; with no daemon (protection switched off
+     * mid-job) there is nobody left to own it, so it is removed.
+     */
+    private fun releaseOngoing() {
+        val daemonAlive = try {
+            AlwaysOnService.isRunning(this)
         } catch (_: Exception) {
+            false
+        }
+        try {
+            if (daemonAlive) stopForeground(STOP_FOREGROUND_DETACH) else stopForeground(true)
+        } catch (_: Exception) {
+            try {
+                stopForeground(true)
+            } catch (_: Exception) {
+            }
         }
     }
 
