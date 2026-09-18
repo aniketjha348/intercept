@@ -367,6 +367,10 @@ X-User-Id: u_abc123...
 
 ### Manual Testing Checklist
 
+> The v0.5.2 paths — risky-message auto-dismiss, overlay threat banner and the
+> always-on daemon — need a real device and have their own checklist:
+> [Device Test Checklist](./testing/DeviceTestChecklist.md).
+
 #### Phase 1: Setup Verification
 - [ ] Install APK on test device
 - [ ] Grant all runtime permissions
