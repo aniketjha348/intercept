@@ -50,9 +50,15 @@ class InterceptScreeningService : CallScreeningService() {
         } catch (_: Exception) {
             false
         }
+        // Contact lookup is permission-backed; if it fails we must not guess.
+        // "not unknown" keeps a contact ringing instead of forwarding it.
+        val unknown = try {
+            ContactHelper.isUnknown(applicationContext, number)
+        } catch (_: Exception) {
+            false
+        }
         val shouldAutoAnswer = try {
-            container.setupDone && container.autoCalls && isDialer &&
-                ContactHelper.isUnknown(applicationContext, number)
+            container.setupDone && container.autoCalls && isDialer && unknown
         } catch (_: Exception) {
             false
         }
@@ -66,7 +72,7 @@ class InterceptScreeningService : CallScreeningService() {
         } catch (_: Exception) {
             false
         }
-        if (forwarding && ContactHelper.isUnknown(applicationContext, number)) {
+        if (forwarding && unknown) {
             val reject = CallResponse.Builder()
                 .setDisallowCall(true)
                 .setRejectCall(true)
