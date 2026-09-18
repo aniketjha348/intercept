@@ -416,9 +416,16 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                     container.setupDone = true
                     nav.navigate(Routes.HOME) { popUpTo(Routes.SETUP) { inclusive = true } }
                 },
-                enabled = allReady,
+                // Auto-answer is the product: Done needs the gates AND the switch.
+                enabled = allReady && autoCalls,
                 modifier = Modifier.fillMaxWidth()
-            ) { Text(if (allReady) "Done — protect me automatically" else "Finish all green steps first ($readyCount/${gates.size})") }
+            ) {
+                Text(
+                    if (allReady && autoCalls) "Done — protect me automatically"
+                    else if (!autoCalls) "Turn on Auto-answer above to finish"
+                    else "Finish all green steps first ($readyCount/${gates.size})"
+                )
+            }
             Spacer(Modifier.height(28.dp))
         }
     }

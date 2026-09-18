@@ -46,10 +46,13 @@ class InterceptInCallService : InCallService() {
         } catch (_: Exception) {
             "Unknown"
         }
+        // NOTE: setupDone is deliberately NOT checked — it only means the
+        // wizard finished. The toggles are the real intent: a user blocked at
+        // 5/6 (e.g. dialer battle) must still get every protection they DID
+        // switch on the moment the OS delivers the call.
         val auto = try {
             val container = applicationContext.appContainer()
-            container.setupDone && container.autoCalls &&
-                ContactHelper.isUnknown(this, number)
+            container.autoCalls && ContactHelper.isUnknown(this, number)
         } catch (_: Exception) {
             false
         }

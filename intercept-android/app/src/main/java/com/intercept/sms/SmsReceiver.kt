@@ -22,7 +22,7 @@ class SmsReceiver : BroadcastReceiver() {
         } catch (_: Exception) {
             return
         }
-        if (!container.setupDone || !container.autoSms) return
+        if (!container.autoSms) return
         val messages = try {
             Telephony.Sms.Intents.getMessagesFromIntent(intent)
         } catch (_: Exception) {

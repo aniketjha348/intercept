@@ -58,7 +58,7 @@ class InterceptNotifications : NotificationListenerService() {
             } catch (_: Exception) {
                 return
             }
-            if (!container.setupDone || !container.autoApps) return
+            if (!container.autoApps) return
             val extras = sbn.notification.extras ?: return
             val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
             val text = (extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
