@@ -157,5 +157,20 @@
       "Is version me taze fixes aur sudhaar",
       "App kholte hi update mil jayega"
     ]
+  },
+  {
+    "version_code": 11,
+    "version_name": "0.4.4",
+    "date": "2026-09-18",
+    "force": false,
+    "notes_en": [
+      "v0.4.4: dialer listing fix (call permissions, dual-source gate, MIUI path)",
+      "v0.4.3: tap notification to watch live, take over anytime",
+      "Release v0.4.2: changelog feeds (auto)"
+    ],
+    "notes_hi": [
+      "Is version me taze fixes aur sudhaar",
+      "App kholte hi update mil jayega"
+    ]
   }
 ]
