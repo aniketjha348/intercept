@@ -2,10 +2,12 @@
 resource "aws_iam_openid_connect_provider" "github" {
   url            = "https://token.actions.githubusercontent.com"
   client_id_list = ["sts.amazonaws.com"]
-  # Both GitHub-documented roots (DigiCert era + current chain) — AWS matches any.
+  # Root CAs for token.actions.githubusercontent.com over time — AWS matches any.
+  # 6938fd4d = DigiCert era; cabd2a79 = ISRG Root X1 (current Let's Encrypt chain,
+  # verified against the letsencrypt.org root download).
   thumbprint_list = [
     "6938fd4d98bab03faadb97b34396831e3780aea1",
-    "1c58a3a8518e8759bf075b76b750d4f2df684f34",
+    "cabd2a79a1076a31f21d253635cb039d4329a5e8",
   ]
 }
 
