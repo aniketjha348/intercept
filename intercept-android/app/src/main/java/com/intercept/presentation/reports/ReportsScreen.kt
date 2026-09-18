@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,7 +63,9 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportsScreen(nav: NavController, container: AppContainer) {
-    var sid by remember { mutableStateOf(container.lastSessionId.orEmpty()) }
+    // rememberSaveable: a rotation must not drop the id you typed and swap the
+    // report out for whatever session happened to run last.
+    var sid by rememberSaveable { mutableStateOf(container.lastSessionId.orEmpty()) }
     var report by remember { mutableStateOf<SecurityReport?>(null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -104,6 +107,7 @@ fun ReportsScreen(nav: NavController, container: AppContainer) {
                 value = sid,
                 onValueChange = { sid = it },
                 label = { Text("Session id") },
+                singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(10.dp))

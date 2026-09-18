@@ -162,6 +162,74 @@ WhatsApp user on earth — now keyed per sender. *Tests: 2.*
 
 ---
 
+## Round 3 — the remaining UI layer (same day)
+
+Settings/Setup, Reports, theme and components. Same question as before: what here can mislead, crash,
+or quietly do nothing?
+
+### 16. One Save with an empty URL bricked the app, permanently — HIGH (crash)
+`di/AppContainer.kt`, `presentation/settings/SettingsScreen.kt`
+
+The setter wrote the raw text to prefs **first** and called `rebuild()` **second** — and `rebuild()` builds a
+Retrofit instance, which *throws* on a base URL it cannot parse. So clearing the field and tapping Save
+(`""` → `/`) crashed at `baseUrl()`, and because the bad value was already persisted, the **next launch**
+hit it again inside `init { }` — a brick that survives restarts and can only be cleared from app settings.
+A missing scheme (`10.0.2.2:8000`, `api.example.com`) did the same. Now the value is validated *before* it is
+stored (`normalizeBackendUrl`), the setter refuses anything Retrofit would reject, and `rebuild()` is
+wrapped so a bad URL heals to the last one Retrofit actually accepted instead of taking the process down.
+A public host without a scheme is deliberately **rejected** rather than assumed http:// — guessing would
+silently downgrade a real user to plaintext while the same screen warns them not to.
+
+### 17. "Test" tested the saved URL, not the one you typed — MEDIUM
+The health check and the https warning both read `container.backendUrl` (the stored value) while the field on
+screen held the new one. Change the URL, tap Test, get a confident verdict about the **previous** backend.
+Test now saves-and-tests what is typed, and names the URL it reached (or failed to reach). The duplicated
+"is this a local host" regex that lived in the screen moved into `di/AppContainer.kt` next to the parser, so
+there is one rule instead of two that can drift.
+
+### 18. A risk level the app did not recognise was rendered as safe — MEDIUM (fail-open)
+`domain/model/Models.kt`
+
+`RiskLevel.of` mapped anything unknown to `LOW`. Nothing triggers this today — the backend vocabulary is
+exactly `LOW/SUSPICIOUS/HIGH/CRITICAL` — but the failure mode is the worst one available on a safety
+product: add a level server-side (`MEDIUM`, `DANGER`), and every older app in the wild paints that call
+green with a low-risk tint. Blank still means LOW; **unrecognised now means SUSPICIOUS**. Fail closed.
+Also removed `RiskLevel.color` — a second copy of the same four hexes that already live in
+`theme/Color.kt`, i.e. a value you could have edited with no effect.
+
+### 19. Setup counted "not on this device" as "passing" — MEDIUM (truthfulness)
+`presentation/setup/SetupScreen.kt`
+
+The headline said *"6 of 6 checks passing"* while rows underneath it read *"Not on this device"*, because
+`readyCount` counted every non-TODO state. READY only, now — and the header names the unavailable ones
+instead of folding them into a green total. `Done` still does not require a gate the device does not offer
+(soft-locking setup on older Android would be worse), but the count no longer overstates what is on.
+
+### 20. Reports forgot the session id you typed — LOW
+`presentation/reports/ReportsScreen.kt`
+
+`remember` is lost on rotation, so the field fell back to `lastSessionId` and the screen loaded a *different*
+session's report than the one on screen a second earlier. `rememberSaveable`, and the id field is
+`singleLine` (a pasted id with a newline in it became a malformed request path).
+
+### 21. The dark room used the paper error colour — LOW (latent)
+`presentation/theme/Theme.kt`
+
+`RoomScheme` existed for one stated reason — "no Material default can leak a light-on-light or dark-on-dark
+pair" — and its `error` slot held `#C1121F`, the ramp built for white. Nothing reads `colorScheme.error`
+today (screens pass `RiskCritical` explicitly), so this is latent rather than visible: it would surface the
+first time a Material error path renders in the room, e.g. a TextField with `isError = true`. Now
+`RiskCriticalOnRoom` with matching `onError`.
+
+### 22. Checked and clean (so the next sweep can skip them)
+Simple-mode cards and buttons pass an explicit `contentColor`, so the `containerColor = RiskCritical`
+buttons in Live/Reports/Analyze are white-on-red as intended; `RiskMeter` clamps to 0–100 and skips a
+zero-width bar; `RiskChip` on dark uses `RoomRaised` + the room ramp; report field mapping from the backend
+(`likely_objective` → `objective`, `claimed_org`) is correct in both directions; `Common.kt` components have
+no state to get wrong.
+
+---
+
 ## Deliberately not changed
 
 - **Unknown callers are not actually silenced**, despite the old comment and the docs saying so. Silencing means
@@ -172,6 +240,14 @@ WhatsApp user on earth — now keyed per sender. *Tests: 2.*
 - **Scam fingerprints are global, not per-user.** They store tactic codes and an objective, never message text or
   identifiers. Cross-user "this pattern was seen before" is a product decision, so it was left alone.
 - **Public demo LiveKit rooms stay open** — the API has no auth model at all (anonymous `X-User-Id`, by design).
+  The same applies to `GET /calls/{id}/report`: the Reports screen will display any session's transcript if the id
+  is known, and there is no ownership to check against because `/calls/start` never records the user id. Worth a
+  product decision, not a silent UI change.
+- **The simple-mode card in the live room still uses the paper ramp** (`RiskLow`/`RiskCritical` rather than
+  `riskOnRoom`). It is legible today, the room ramp exists precisely for that surface, and the fix is one line —
+  left alone because it changes the look of the signature screen and cannot be eyeballed from here.
+- **`SettingsScreen.kt` has a blank line after every line of code** (LF + `\n\n`). Harmless to Kotlin, ~370 lines
+  of noise in the diff, so reformatting it did not belong in a bug-fix commit.
 
 ---
 
@@ -182,3 +258,8 @@ WhatsApp user on earth — now keyed per sender. *Tests: 2.*
 - **Telecom behaviour** (findings 5–6) needs a device + `ROLE_DIALER` / `ROLE_CALL_SCREENING`. See
   [Device Test Checklist](./testing/DeviceTestChecklist.md) → *Path D*.
 - **LiveKit token/dispatch** (finding 4) needs `LIVEKIT_URL`/`KEY`/`SECRET` configured.
+- **The round-3 URL fixes are the exception** — no permissions needed, so they are checkable on any build:
+  Settings → clear the backend field → Save (must show a red *"Not a usable URL"*, not crash), then relaunch
+  (must still start); type `10.0.2.2:8000` → Save (accepted as `http://10.0.2.2:8000`); type `api.example.com`
+  → Save (rejected — no scheme); Test with the field edited (the status must name the URL you typed).
+  Also: type a session id in Reports, rotate the screen, confirm the id and its report survive.

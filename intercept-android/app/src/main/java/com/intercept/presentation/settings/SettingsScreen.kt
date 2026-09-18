@@ -119,6 +119,10 @@ import com.intercept.presentation.theme.RiskSuspicious
 
 import com.intercept.presentation.theme.Wire
 
+import androidx.compose.runtime.saveable.rememberSaveable
+
+import com.intercept.di.isLocalHost
+
 import kotlinx.coroutines.launch
 
 
@@ -143,7 +147,15 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
 
     val scope = rememberCoroutineScope()
 
-    var url by remember { mutableStateOf(container.backendUrl) }
+    /** One wording for "that text cannot be a backend URL", wherever it is judged. */
+    fun invalidUrlStatus() = StatusMsg(
+        "Not a usable URL — use https://your-server, or http://10.0.2.2:8000 for local dev.",
+        Tone.BAD,
+    )
+
+    // rememberSaveable: a typed-but-unsaved URL must survive a rotation. The
+    // switches below write straight through, so they only need remember.
+    var url by rememberSaveable { mutableStateOf(container.backendUrl) }
 
     var simple by remember { mutableStateOf(container.simpleMode) }
 
@@ -268,9 +280,19 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
 
                 Button(onClick = {
 
-                    container.backendUrl = url
+                    val saved = container.trySetBackendUrl(url)
 
-                    status = StatusMsg("Backend saved: ${container.backendUrl}", Tone.INFO)
+                    if (saved == null) {
+
+                        status = invalidUrlStatus()
+
+                    } else {
+
+                        url = saved
+
+                        status = StatusMsg("Backend saved: $saved", Tone.INFO)
+
+                    }
 
                 }) { Text("Save") }
 
@@ -278,21 +300,28 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
 
                     scope.launch {
 
+                        // Test what is typed, not what was saved: this button
+                        // used to probe the *stored* URL, so editing the field
+                        // and testing reported on the previous backend.
+                        val saved = container.trySetBackendUrl(url)
+
+                        if (saved == null) {
+
+                            status = invalidUrlStatus()
+
+                            return@launch
+
+                        }
+
                         val ok = container.repo.checkHealth()
 
-                        val u = container.backendUrl.trim().lowercase()
+                        val u = saved.lowercase()
 
-                        val local = u.contains("localhost") || u.contains("10.0.2.2") ||
-
-                            u.contains("192.168.") || u.contains("127.0.0.1") ||
-
-                            Regex("https?://10\\.").containsMatchIn(u) ||
-
-                            Regex("https?://172\\.(1[6-9]|2[0-9]|3[01])\\.").containsMatchIn(u)
+                        val local = isLocalHost(saved)
 
                         status = when {
 
-                            !ok -> StatusMsg("Backend unreachable", Tone.BAD)
+                            !ok -> StatusMsg("Backend unreachable: $saved", Tone.BAD)
 
                             !u.startsWith("https") && !local -> StatusMsg(
 

@@ -15,12 +15,50 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+
+private const val DEFAULT_BACKEND_URL =
+    "http://intercept-backend-1446503107.ap-south-1.elb.amazonaws.com"
+
+/**
+ * Local / loopback / emulator host. The only place a missing scheme may be
+ * filled in as http:// — guessing it for a public host would silently downgrade
+ * a real user to plaintext, when the app's whole promise is that call texts
+ * (which carry OTPs) never travel in the clear.
+ */
+fun isLocalHost(raw: String): Boolean {
+    val u = raw.trim().lowercase()
+    return u.contains("localhost") || u.contains("10.0.2.2") ||
+        u.contains("127.0.0.1") || u.contains("192.168.") ||
+        Regex("https?://10\\.").containsMatchIn(u) ||
+        Regex("https?://172\\.(1[6-9]|2[0-9]|3[01])\\.").containsMatchIn(u)
+}
+
+/**
+ * The base URL we can actually hand Retrofit, or null when [raw] can't be one.
+ *
+ * Retrofit validates at build time and throws — which is why this must be
+ * checked *before* a value is stored, not after.
+ */
+fun normalizeBackendUrl(raw: String): String? {
+    val t = raw.trim().trimEnd('/')
+    if (t.isEmpty()) return null
+    val lower = t.lowercase()
+    val explicit = lower.startsWith("http://") || lower.startsWith("https://")
+    val candidate = when {
+        explicit -> t
+        isLocalHost(t) -> "http://$t"
+        else -> return null
+    }
+    val parsed = candidate.toHttpUrlOrNull() ?: return null
+    return if (parsed.host.isBlank()) null else candidate
+}
 
 /** Manual DI (no Hilt → zero setup). Emulator reaches host backend via 10.0.2.2. */
 class AppContainer(context: Context) {
@@ -31,14 +69,25 @@ class AppContainer(context: Context) {
     /** Production backend ships as the default (fresh installs just work);
      *  emulator devs override it in Settings to http://10.0.2.2:8000. */
     var backendUrl: String
-        get() = prefs.getString(
-            "backend_url",
-            "http://intercept-backend-1446503107.ap-south-1.elb.amazonaws.com"
-        ) ?: "http://intercept-backend-1446503107.ap-south-1.elb.amazonaws.com"
+        get() = prefs.getString("backend_url", DEFAULT_BACKEND_URL)
+            ?.takeIf { it.isNotBlank() } ?: DEFAULT_BACKEND_URL
         set(v) {
-            prefs.edit().putString("backend_url", v.trim().trimEnd('/')).apply()
+            // Validate here rather than only in the UI. The bad value used to be
+            // persisted first and only then rejected by rebuild() — which the
+            // *next* launch runs from init(), so one Save on an empty field
+            // bricked the app on every start until its data was cleared.
+            val clean = normalizeBackendUrl(v) ?: return
+            prefs.edit().putString("backend_url", clean).apply()
             rebuild()
         }
+
+    /** Saves [raw] when it can be a base URL. Returns what was saved, or null
+     *  when the text was rejected — the caller says so, we never store it. */
+    fun trySetBackendUrl(raw: String): String? {
+        val clean = normalizeBackendUrl(raw) ?: return null
+        backendUrl = clean
+        return clean
+    }
 
     var simpleMode: Boolean
         get() = prefs.getBoolean("simple_mode", false)
@@ -208,6 +257,9 @@ class AppContainer(context: Context) {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
 
+    /** Last base URL Retrofit actually accepted — the fallback if a bad one slips in. */
+    private var lastGoodUrl = DEFAULT_BACKEND_URL
+
     lateinit var http: OkHttpClient
         private set
     lateinit var api: InterceptApiService
@@ -220,6 +272,21 @@ class AppContainer(context: Context) {
     }
 
     fun rebuild() {
+        val base = backendUrl
+        try {
+            build(base)
+            lastGoodUrl = base
+        } catch (_: Exception) {
+            // A base URL Retrofit refuses must never take the app down: restore
+            // the last one it accepted (bounded — lastGoodUrl built once already).
+            if (base != lastGoodUrl) {
+                prefs.edit().putString("backend_url", lastGoodUrl).apply()
+                rebuild()
+            }
+        }
+    }
+
+    private fun build(base: String) {
         http = OkHttpClient.Builder()
             .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BASIC))
             // Who is calling: per-user Scam DNA without accounts or passwords.
@@ -241,7 +308,7 @@ class AppContainer(context: Context) {
             .writeTimeout(60, TimeUnit.SECONDS)
             .build()
         api = Retrofit.Builder()
-            .baseUrl(backendUrl.trimEnd('/') + "/")
+            .baseUrl(base.trimEnd('/') + "/")
             .client(http)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()

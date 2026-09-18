@@ -274,7 +274,10 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
         "Battery unrestricted" to batteryGate(),
         "Notification access" to notifGate(),
     )
-    val readyCount = gates.count { it.second != Gate.TODO }
+    // READY only: "not available on this device" is not "passing", and the
+    // headline below used to count it as one.
+    val readyCount = gates.count { it.second == Gate.READY }
+    val naCount = gates.count { it.second == Gate.NA }
     val allReady = gates.all { it.second != Gate.TODO }
     LaunchedEffect(readyCount) { container.setupProgress = readyCount }
 
@@ -299,7 +302,8 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
         ) {
             Spacer(Modifier.height(8.dp))
             Text(
-                "$readyCount of ${gates.size} checks passing",
+                "$readyCount of ${gates.size} checks passing" +
+                    if (naCount > 0) "  ·  $naCount not available on this device" else "",
                 style = MaterialTheme.typography.headlineSmall,
                 color = Ink,
             )

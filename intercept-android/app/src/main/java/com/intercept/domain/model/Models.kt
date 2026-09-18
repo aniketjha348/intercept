@@ -2,15 +2,26 @@ package com.intercept.domain.model
 
 /** §10 risk levels + §23 domain models (CallSession / RiskState / AttackEvent / SecurityReport). */
 
-enum class RiskLevel(val label: String, val color: Long) {
-    LOW("LOW", 0xFF1E7F4F),
-    SUSPICIOUS("SUSPICIOUS", 0xFFA9700C),
-    HIGH("HIGH", 0xFFC2410C),
-    CRITICAL("CRITICAL", 0xFFC1121F);
+// No colour here on purpose: the ramp lives in presentation/theme/Color.kt, keyed
+// to this enum. A second copy of the same hexes is a second source of truth.
+enum class RiskLevel(val label: String) {
+    LOW("LOW"),
+    SUSPICIOUS("SUSPICIOUS"),
+    HIGH("HIGH"),
+    CRITICAL("CRITICAL");
 
     companion object {
-        fun of(raw: String): RiskLevel =
-            values().firstOrNull { it.name == raw.uppercase() } ?: LOW
+        /**
+         * Blank (an older server, or a field nobody filled) is LOW. Anything else
+         * we do not recognise is SUSPICIOUS, deliberately: a level this build has
+         * never heard of must not render as "safe". Fail closed, not open — a
+         * newer server adding a level would otherwise paint a threat green.
+         */
+        fun of(raw: String): RiskLevel {
+            val key = raw.trim().uppercase()
+            if (key.isEmpty()) return LOW
+            return values().firstOrNull { it.name == key } ?: SUSPICIOUS
+        }
     }
 }
 

@@ -62,8 +62,10 @@ private val RoomScheme = darkColorScheme(
     onSurfaceVariant = RoomMuted,
     outline = RoomWire,
     outlineVariant = RoomWire,
-    error = RiskCritical,
-    onError = Paper,
+    // The room ramp, not the paper one: #C1121F on #14181D was exactly the
+    // light-on-dark pair this second scheme exists to prevent.
+    error = RiskCriticalOnRoom,
+    onError = Room,
     errorContainer = RoomRaised,
     onErrorContainer = RoomInk,
 )
