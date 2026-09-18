@@ -7,10 +7,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.core.content.ContextCompat
 import com.intercept.presentation.navigation.NavGraph
+import com.intercept.presentation.theme.InterceptTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         setContent {
-            MaterialTheme {
+            InterceptTheme {
                 Surface {
                     NavGraph(
                         container = appContainer(),

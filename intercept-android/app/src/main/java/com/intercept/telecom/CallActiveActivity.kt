@@ -9,7 +9,9 @@ import android.telecom.Call
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,22 +19,39 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.intercept.presentation.components.StatusDot
+import com.intercept.presentation.theme.InterceptTheme
+import com.intercept.presentation.theme.Machine
+import com.intercept.presentation.theme.Paper
+import com.intercept.presentation.theme.RiskCritical
+import com.intercept.presentation.theme.RiskCriticalOnRoom
+import com.intercept.presentation.theme.RiskLowOnRoom
+import com.intercept.presentation.theme.Room
+import com.intercept.presentation.theme.RoomInk
+import com.intercept.presentation.theme.RoomMuted
+import com.intercept.presentation.theme.RoomRaised
 import com.intercept.service.AutoScreenService
 
 /**
@@ -116,33 +135,84 @@ class CallActiveActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun CallActiveUi() {
-        MaterialTheme {
-            Scaffold(topBar = { TopAppBar(title = { Text("INTERCEPT call") }) }) { pad ->
+        InterceptTheme(room = true) {
+            Scaffold(
+                containerColor = Room,
+                topBar = {
+                    TopAppBar(
+                        title = { Text("Intercept call") },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Room,
+                            titleContentColor = RoomInk,
+                        ),
+                    )
+                }
+            ) { pad ->
                 Column(
-                    Modifier.fillMaxSize().padding(pad).padding(24.dp),
+                    Modifier.fillMaxSize().padding(pad).padding(horizontal = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Text("📞", style = MaterialTheme.typography.displayLarge)
-                    Spacer(Modifier.height(8.dp))
-                    Text(number, style = MaterialTheme.typography.headlineSmall)
-                    Text(stateText, style = MaterialTheme.typography.bodyMedium)
-                    if (screening) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "🛡 AI is screening this call — risky callers are cut automatically.",
-                            style = MaterialTheme.typography.bodySmall
+                    Box(
+                        Modifier
+                            .size(76.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(RoomRaised),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Filled.Call,
+                            contentDescription = null,
+                            tint = RoomInk,
+                            modifier = Modifier.size(34.dp),
                         )
                     }
                     Spacer(Modifier.height(24.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        number,
+                        style = MaterialTheme.typography.headlineMedium.copy(fontFamily = Machine),
+                        color = RoomInk,
+                    )
+                    if (stateText.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            StatusDot(
+                                if (stateText == "Ended") RiskCriticalOnRoom else RiskLowOnRoom,
+                                size = 8.dp,
+                            )
+                            Text(stateText, style = MaterialTheme.typography.bodyMedium, color = RoomMuted)
+                        }
+                    }
+                    if (screening) {
+                        Spacer(Modifier.height(14.dp))
+                        Row(
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            StatusDot(RiskLowOnRoom, size = 8.dp, modifier = Modifier.padding(top = 6.dp))
+                            Text(
+                                "AI is screening this call — risky callers are cut automatically.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = RiskLowOnRoom,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(28.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedButton(
                             onClick = {
                                 InterceptInCallService.setSpeaker(!speaker)
                                 refresh()
                             },
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = if (speaker) Room else RoomInk,
+                                containerColor = if (speaker) RoomInk else Room,
+                            ),
                             modifier = Modifier.weight(1f)
-                        ) { Text(if (speaker) "Speaker ON" else "Speaker") }
+                        ) { Text(if (speaker) "Speaker on" else "Speaker") }
                         Button(
                             onClick = {
                                 InterceptInCallService.hangup()
@@ -151,15 +221,19 @@ class CallActiveActivity : ComponentActivity() {
                                 } catch (_: Exception) {
                                 }
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = RiskCritical,
+                                contentColor = Paper,
+                            ),
                             modifier = Modifier.weight(1f)
                         ) { Text("Hang up") }
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
                     OutlinedButton(
                         onClick = { screenCurrentCall() },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = RoomInk),
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("🛡 Screen this call with AI") }
+                    ) { Text("Screen this call with AI") }
                 }
             }
         }

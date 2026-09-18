@@ -18,17 +18,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -37,8 +39,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
@@ -48,7 +50,15 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.intercept.di.AppContainer
+import com.intercept.presentation.components.SectionLabel
+import com.intercept.presentation.components.StatusDot
 import com.intercept.presentation.navigation.Routes
+import com.intercept.presentation.theme.Ink
+import com.intercept.presentation.theme.Muted
+import com.intercept.presentation.theme.Paper
+import com.intercept.presentation.theme.RiskLow
+import com.intercept.presentation.theme.RiskSuspicious
+import com.intercept.presentation.theme.Wire
 import kotlinx.coroutines.launch
 
 private val NEEDED = listOf(
@@ -198,19 +208,38 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
     val allReady = gates.all { it.second != Gate.TODO }
     LaunchedEffect(readyCount) { container.setupProgress = readyCount }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Turn on auto-protect") }) }) { pad ->
+    Scaffold(
+        containerColor = Paper,
+        topBar = {
+            TopAppBar(
+                title = { Text("Set up protection") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Paper,
+                    titleContentColor = Ink,
+                ),
+            )
+        }
+    ) { pad ->
         Column(
-            Modifier.fillMaxSize().padding(pad).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            Modifier
+                .fillMaxSize()
+                .padding(pad)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
         ) {
+            Spacer(Modifier.height(8.dp))
             Text(
-                "Protection starts only when everything below is green — $readyCount of ${gates.size} ready.",
-                style = MaterialTheme.typography.bodyMedium
+                "$readyCount of ${gates.size} checks passing",
+                style = MaterialTheme.typography.headlineSmall,
+                color = Ink,
             )
+            Spacer(Modifier.height(6.dp))
             Text(
-                "One setup, then INTERCEPT works on its own — no taps per call or message.",
-                style = MaterialTheme.typography.bodySmall, color = Color.Gray
+                "Protection starts only when every check below passes. One setup, then Intercept works on its own — no taps per call or message.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Muted,
             )
+            Spacer(Modifier.height(20.dp))
 
             GateRow("Backend reachable", gates[0].second, "The app is useless without its brain. Fix the URL in Settings if this fails.") {
                 OutlinedButton(
@@ -236,14 +265,14 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                 }
             }
 
-            GateRow("Call-screening role", gates[2].second, "Lets INTERCEPT silence unknown callers.") {
+            GateRow("Call-screening role", gates[2].second, "Lets Intercept silence unknown callers.") {
                 OutlinedButton(
                     onClick = { requestRole(RoleManager.ROLE_CALL_SCREENING) },
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Enable screening") }
             }
 
-            GateRow("Default Phone app", gates[3].second, "Lets INTERCEPT auto-answer strangers.") {
+            GateRow("Default Phone app", gates[3].second, "Lets Intercept auto-answer strangers.") {
                 OutlinedButton(
                     onClick = { requestRole(RoleManager.ROLE_DIALER) },
                     modifier = Modifier.fillMaxWidth()
@@ -269,7 +298,7 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                 ) { Text("Allow background running") }
             }
 
-            GateRow("Notification access", gates[5].second, "Lets INTERCEPT scan WhatsApp/Telegram messages with zero paste.") {
+            GateRow("Notification access", gates[5].second, "Lets Intercept scan WhatsApp/Telegram messages with zero paste.") {
                 OutlinedButton(
                     onClick = {
                         try {
@@ -283,32 +312,24 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                 ) { Text("Allow notification access") }
             }
 
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Auto-answer unknown calls")
-                        Switch(
-                            checked = autoCalls,
-                            onCheckedChange = { autoCalls = it; container.autoCalls = it; tick++ }
-                        )
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Auto-scan stranger SMS")
-                        Switch(
-                            checked = autoSms,
-                            onCheckedChange = { autoSms = it; container.autoSms = it; tick++ }
-                        )
-                    }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Auto-scan app messages")
-                        Switch(
-                            checked = autoApps,
-                            onCheckedChange = { autoApps = it; container.autoApps = it; tick++ }
-                        )
-                    }
+            Spacer(Modifier.height(24.dp))
+            SectionLabel("What gets screened")
+            Spacer(Modifier.height(6.dp))
+            Column(
+                Modifier.fillMaxWidth(),
+            ) {
+                SwitchRow("Auto-answer unknown calls", autoCalls) {
+                    autoCalls = it; container.autoCalls = it; tick++
+                }
+                SwitchRow("Auto-scan stranger SMS", autoSms) {
+                    autoSms = it; container.autoSms = it; tick++
+                }
+                SwitchRow("Auto-scan app messages", autoApps) {
+                    autoApps = it; container.autoApps = it; tick++
                 }
             }
-            Spacer(Modifier.height(4.dp))
+
+            Spacer(Modifier.height(24.dp))
             Button(
                 onClick = {
                     container.setupDone = true
@@ -317,19 +338,77 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                 enabled = allReady,
                 modifier = Modifier.fillMaxWidth()
             ) { Text(if (allReady) "Done — protect me automatically" else "Finish all green steps first ($readyCount/${gates.size})") }
+            Spacer(Modifier.height(28.dp))
         }
     }
 }
 
 @Composable
-private fun GateRow(label: String, gate: Gate, hint: String, action: @Composable () -> Unit) {
-    val (mark, color) = when (gate) {
-        Gate.READY -> "✅ " to Color(0xFF2E7D32)
-        Gate.TODO -> "○ " to Color.Unspecified
-        Gate.NA -> "– " to Color.Gray
+private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Ink,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(checked = checked, onCheckedChange = onChange)
     }
-    Text(mark + label + if (gate == Gate.NA) " (not on this device — skipped)" else "", color = color)
-    Text(hint, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-    if (gate == Gate.TODO) action()
 }
 
+/**
+ * One check, as a row with an unmistakable state. A bare emoji could not say
+ * "this device does not have that option", which is a genuinely different
+ * outcome from "you have not done it yet".
+ */
+@Composable
+private fun GateRow(label: String, gate: Gate, hint: String, action: @Composable () -> Unit) {
+    val dot = when (gate) {
+        Gate.READY -> RiskLow
+        Gate.TODO -> RiskSuspicious
+        Gate.NA -> Muted
+    }
+    val state = when (gate) {
+        Gate.READY -> "Passing"
+        Gate.TODO -> "To do"
+        Gate.NA -> "Not on this device"
+    }
+    Column(Modifier.fillMaxWidth()) {
+        HorizontalDivider(color = Wire)
+        Spacer(Modifier.height(14.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            StatusDot(dot, size = 9.dp)
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = Ink,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                state,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (gate == Gate.TODO) RiskSuspicious else Muted,
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            hint,
+            style = MaterialTheme.typography.bodySmall,
+            color = Muted,
+            modifier = Modifier.padding(start = 19.dp),
+        )
+        if (gate == Gate.TODO) {
+            Spacer(Modifier.height(12.dp))
+            action()
+        }
+        Spacer(Modifier.height(16.dp))
+    }
+}

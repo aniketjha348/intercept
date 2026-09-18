@@ -7,28 +7,23 @@ import android.content.Intent
 import android.content.IntentFilter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Shield
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -37,8 +32,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -46,7 +41,16 @@ import com.intercept.BuildConfig
 import com.intercept.data.DemoScript
 import com.intercept.di.AppContainer
 import com.intercept.domain.model.UpdateInfo
+import com.intercept.presentation.components.ActionRow
+import com.intercept.presentation.components.BrandMark
+import com.intercept.presentation.components.SectionLabel
+import com.intercept.presentation.components.StatusDot
 import com.intercept.presentation.navigation.Routes
+import com.intercept.presentation.theme.Ink
+import com.intercept.presentation.theme.Muted
+import com.intercept.presentation.theme.Paper
+import com.intercept.presentation.theme.RiskLow
+import com.intercept.presentation.theme.RiskSuspicious
 import com.intercept.update.UpdateManager
 import kotlinx.coroutines.launch
 
@@ -105,87 +109,103 @@ fun HomeScreen(nav: NavController, container: AppContainer) {
             }
         )
     }
-    Scaffold(topBar = { TopAppBar(title = { Text("INTERCEPT") }) }) { pad ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(pad).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF102027))) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("🛡 AI Social Engineering Firewall", color = Color.White, style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Something stands between you and dangerous communication.",
-                        color = Color(0xFFB0BEC5), style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-            if (!container.setupDone) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(Modifier.padding(14.dp)) {
-                        Text("🛡 Auto-protect is OFF", style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            "Setup stays locked until all 6 checks pass — finish them once, then forget about it. (${container.setupProgress}/6 ready)",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Button(
-                            onClick = { nav.navigate(Routes.SETUP) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("Turn on auto-protect") }
+
+    val ready = container.setupDone
+    val autoWhat = listOf(
+        if (container.autoCalls) "calls" else null,
+        if (container.autoSms) "SMS" else null,
+        if (container.autoApps) "apps" else null,
+    ).filterNotNull()
+
+    Scaffold(
+        containerColor = Paper,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        BrandMark(size = 28.dp)
+                        Text("Intercept", style = MaterialTheme.typography.titleLarge)
                     }
-                }
-            } else {
-                val autoWhat = listOf(
-                    if (container.autoCalls) "calls" else null,
-                    if (container.autoSms) "SMS" else null,
-                    if (container.autoApps) "apps" else null,
-                ).filterNotNull()
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Paper,
+                    titleContentColor = Ink,
+                ),
+            )
+        }
+    ) { pad ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(pad)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
+        ) {
+            Spacer(Modifier.height(12.dp))
+
+            // The hero answers the only question that matters on opening: am I safe?
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                StatusDot(if (ready) RiskLow else RiskSuspicious, size = 12.dp)
                 Text(
-                    if (autoWhat.isEmpty()) "Auto-protect on — enable call/SMS toggles in Setup."
-                    else "✅ Auto-protect on (${autoWhat.joinToString(" + ")}). Strangers handled, contacts ring through.",
-                    style = MaterialTheme.typography.bodySmall, color = Color(0xFF2E7D32)
+                    if (ready) "Protected" else "Setup unfinished",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Ink,
                 )
             }
-            Button(
+            Spacer(Modifier.height(8.dp))
+            Text(
+                when {
+                    !ready -> "${container.setupProgress} of 6 checks done. Auto-protect stays off until they all pass."
+                    autoWhat.isEmpty() -> "Auto-protect is on. Turn on calls or SMS in Setup to cover more."
+                    else -> "Watching ${autoWhat.joinToString(", ")}. Strangers are handled; your contacts ring through."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = Muted,
+            )
+            if (!ready) {
+                Spacer(Modifier.height(18.dp))
+                Button(
+                    onClick = { nav.navigate(Routes.SETUP) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Finish setup") }
+            }
+
+            Spacer(Modifier.height(32.dp))
+            SectionLabel("What you can do")
+            ActionRow(
+                title = "Analyze a message",
+                subtitle = "Link, screenshot, QR or WhatsApp text",
+                onClick = { nav.navigate(Routes.ANALYZE) },
+                showRule = false,
+            )
+            ActionRow(
+                title = "Last security report",
+                subtitle = "What the caller tried, and what was protected",
+                onClick = { nav.navigate(Routes.REPORTS) },
+            )
+            ActionRow(
+                title = "Settings",
+                subtitle = "Backend, language and protection switches",
+                onClick = { nav.navigate(Routes.SETTINGS) },
+            )
+
+            Spacer(Modifier.height(20.dp))
+            // A test affordance, not a feature — so it stays out of the main list.
+            TextButton(
                 onClick = {
                     container.pendingIncomingCaller = DemoScript.callerNumber
                     nav.navigate(Routes.INCOMING)
                 },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Filled.Call, contentDescription = null)
-                Text("  Simulate incoming scam call")
-            }
-            OutlinedButton(
-                onClick = { nav.navigate(Routes.ANALYZE) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Filled.Search, contentDescription = null)
-                Text("  Analyze message / screenshot / URL / QR")
-            }
-            OutlinedButton(
-                onClick = { nav.navigate(Routes.REPORTS) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Filled.Shield, contentDescription = null)
-                Text("  Last security report")
-            }
-            OutlinedButton(
-                onClick = { nav.navigate(Routes.SETTINGS) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Filled.Settings, contentDescription = null)
-                Text("  Settings")
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "SCREEN unknown calls  •  ANALYZE any message  •  PROTECT with AI guardian",
-                style = MaterialTheme.typography.bodySmall, color = Color.Gray
-            )
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Try a demo scam call", color = Muted) }
+
+            Spacer(Modifier.height(24.dp))
         }
     }
 }

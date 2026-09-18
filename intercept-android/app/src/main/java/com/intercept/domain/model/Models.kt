@@ -3,10 +3,10 @@ package com.intercept.domain.model
 /** §10 risk levels + §23 domain models (CallSession / RiskState / AttackEvent / SecurityReport). */
 
 enum class RiskLevel(val label: String, val color: Long) {
-    LOW("LOW", 0xFF2E7D32),
-    SUSPICIOUS("SUSPICIOUS", 0xFFF9A825),
-    HIGH("HIGH", 0xFFEF6C00),
-    CRITICAL("CRITICAL", 0xFFC62828);
+    LOW("LOW", 0xFF1E7F4F),
+    SUSPICIOUS("SUSPICIOUS", 0xFFA9700C),
+    HIGH("HIGH", 0xFFC2410C),
+    CRITICAL("CRITICAL", 0xFFC1121F);
 
     companion object {
         fun of(raw: String): RiskLevel =

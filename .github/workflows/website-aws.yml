@@ -37,6 +37,16 @@ jobs:
       - name: Sync to S3
         run: aws s3 sync intercept-website/ "s3://${S3_BUCKET}/" --delete --exclude ".git*"
 
+      # aws s3 sync takes Content-Type from Python's mimetypes, which does not
+      # know .woff2 — it would land as binary/octet-stream and browsers may
+      # refuse to use it for @font-face. Re-upload the fonts with the right
+      # type. Runs after the sync so the last write wins.
+      - name: Set font content types
+        run: |
+          aws s3 cp intercept-website/fonts/ "s3://${S3_BUCKET}/fonts/" --recursive \
+            --content-type "font/woff2" \
+            --cache-control "public, max-age=31536000, immutable"
+
       - name: Invalidate CloudFront (skips on S3-direct pilot)
         if: ${{ env.CF_DISTRIBUTION != '' }}
         run: aws cloudfront create-invalidation --distribution-id "${CF_DISTRIBUTION}" --paths "/*"
