@@ -57,21 +57,21 @@ terraform output    # → api_url, ecr_uri, deploy_role_arn
 git push origin main                 # deploys itself, smoke-gated
 ```
 
-## 4b. Shipping an app update (website + in-app updater move together)
+## 4b. Shipping an app update (fully automatic — no manual JSON edits)
 
-One release = 4 edits, same numbers everywhere, then tag. Miss one and users
-either never see the update or download a dead link:
-
-1. `intercept-android/app/build.gradle.kts` → bump `versionCode` (+1) + `versionName`.
-2. `intercept-backend/app/updates.json` → append entry (same code/name/notes, no `apk_url` key — the server injects it).
-3. `intercept-website/updates.json` → same entry + `"apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk"`.
-4. Commit + push, then:
+1. `intercept-android/app/build.gradle.kts` → bump `versionCode` (+1) + `versionName`. Commit + push.
+2. Tag it:
 ```powershell
-git tag v0.3.0; git push origin v0.3.0   # public APK/AAB Release; `latest` moves itself
+git tag v0.3.3; git push origin v0.3.3
 ```
+3. CI does the rest: public APK/AAB Release → changelog entries written into
+   BOTH feeds by `scripts/release_metadata.py` (notes come from your commits
+   since the last tag) → pushed back to main → backend redeploys (`/app/latest`
+   fresh) + website syncs (download card fresh).
 
 Check after: live `/app/latest` shows the new code, the website download card
-shows the new name, and an old install pops the update dialog.
+shows the new name, and an old install pops the update dialog. Manual feed
+edits are only for fixing typos in old entries — never for new releases.
 
 Backend secrets rotate without rebuilds: update the Secrets Manager value →
 push anything (or run the workflow) → fresh tasks pick it up.

@@ -73,3 +73,31 @@ jobs:
         with:
           files: dist/app-debug.apk
           generate_release_notes: true
+
+  # Tag → changelog entries in BOTH feeds, committed straight back to main.
+  # That push redeploys the backend (/app/latest fresh) + website (card fresh).
+  # Zero manual JSON edits, ever again. Idempotent: entry exists → no commit → no loop.
+  metadata:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: release
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Generate feed entries
+        id: meta
+        run: |
+          CHANGED=$(python scripts/release_metadata.py)
+          echo "changed=$CHANGED" >> "$GITHUB_OUTPUT"
+
+      - name: Commit + push feed update
+        if: steps.meta.outputs.changed == 'true'
+        run: |
+          git config user.name "intercept-bot"
+          git config user.email "intercept-bot@users.noreply.github.com"
+          git add intercept-backend/app/updates.json intercept-website/updates.json
+          git commit -m "Release ${GITHUB_REF_NAME}: changelog feeds (auto)"
+          git push origin HEAD:main
