@@ -17,6 +17,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_INCOMING = "extra_incoming"
         const val EXTRA_ANALYZE = "extra_analyze"
+        const val EXTRA_WATCH_SID = "extra_watch_sid"
     }
 
     private val permissionLauncher =
@@ -51,6 +52,9 @@ class MainActivity : ComponentActivity() {
         val startAtIncoming = intent?.getBooleanExtra(EXTRA_INCOMING, false) == true
         val startAtAnalyze = intent?.getBooleanExtra(EXTRA_ANALYZE, false) == true &&
             !startAtIncoming
+        // Notification tap during headless screening: jump straight to the transcript.
+        val watchSid = intent?.getStringExtra(EXTRA_WATCH_SID)?.takeIf { it.isNotBlank() }
+            ?.takeUnless { startAtIncoming }
         // Share-sheet entry: verify the shared link/text immediately.
         val shared = if (intent?.action == android.content.Intent.ACTION_SEND) {
             intent.getStringExtra(android.content.Intent.EXTRA_TEXT)
@@ -70,6 +74,7 @@ class MainActivity : ComponentActivity() {
                         container = appContainer(),
                         startAtIncoming = startAtIncoming,
                         startAtAnalyze = (!shared.isNullOrBlank() || startAtAnalyze) && !startAtIncoming,
+                        startLiveSid = watchSid,
                     )
                 }
             }

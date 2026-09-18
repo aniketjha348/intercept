@@ -312,6 +312,9 @@ class AutoScreenService : Service() {
     private fun mainIntent(): PendingIntent {
         val intent = Intent(this, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        // Screening live right now? Tap jumps straight to the transcript so
+        // the user can read along, take over, or cut the call themselves.
+        activeCallSession?.let { intent.putExtra(MainActivity.EXTRA_WATCH_SID, it) }
         return PendingIntent.getActivity(
             this, 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

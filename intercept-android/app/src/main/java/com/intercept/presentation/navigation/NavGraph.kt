@@ -27,11 +27,17 @@ object Routes {
 }
 
 @Composable
-fun NavGraph(container: AppContainer, startAtIncoming: Boolean, startAtAnalyze: Boolean = false) {
+fun NavGraph(
+    container: AppContainer,
+    startAtIncoming: Boolean,
+    startAtAnalyze: Boolean = false,
+    startLiveSid: String? = null,
+) {
     val nav = rememberNavController()
     NavHost(
         navController = nav,
         startDestination = if (startAtIncoming) Routes.INCOMING
+        else if (startLiveSid != null) Routes.live(startLiveSid)
         else if (startAtAnalyze) Routes.ANALYZE else Routes.HOME
     ) {
         composable(Routes.HOME) { HomeScreen(nav, container) }
