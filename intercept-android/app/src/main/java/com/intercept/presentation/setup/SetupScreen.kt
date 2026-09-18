@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings as SysSettings
+import android.telecom.TelecomManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -315,6 +316,16 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
             }
 
             GateRow("Default Phone app", gates[3].second, "Lets Intercept auto-answer strangers.") {
+                Text(
+                    "Phone app right now: " + try {
+                        ctx.getSystemService(TelecomManager::class.java)?.defaultDialerPackage
+                            ?: "unknown"
+                    } catch (_: Exception) {
+                        "unknown"
+                    },
+                    style = MaterialTheme.typography.bodySmall, color = Muted
+                )
+                Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = { requestRole(RoleManager.ROLE_DIALER) },
                     modifier = Modifier.fillMaxWidth()
