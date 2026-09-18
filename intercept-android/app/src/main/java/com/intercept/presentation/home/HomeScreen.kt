@@ -142,6 +142,7 @@ fun HomeScreen(nav: NavController, container: AppContainer) {
                 val autoWhat = listOf(
                     if (container.autoCalls) "calls" else null,
                     if (container.autoSms) "SMS" else null,
+                    if (container.autoApps) "apps" else null,
                 ).filterNotNull()
                 Text(
                     if (autoWhat.isEmpty()) "Auto-protect on — enable call/SMS toggles in Setup."

@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings as SysSettings
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.core.app.NotificationManagerCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -63,6 +64,7 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
     var tick by remember { mutableStateOf(0) }
     var autoCalls by remember { mutableStateOf(container.autoCalls) }
     var autoSms by remember { mutableStateOf(container.autoSms) }
+    var autoApps by remember { mutableStateOf(container.autoApps) }
 
     @Suppress("UNUSED_VARIABLE")
     val refresh = tick // re-check permissions/roles after every grant
@@ -117,6 +119,12 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
         } catch (_: Exception) {
             false
         }
+    }
+
+    fun notifOk(): Boolean = try {
+        NotificationManagerCompat.getEnabledListenerPackages(ctx).contains(ctx.packageName)
+    } catch (_: Exception) {
+        false
     }
 
     val permsOk = hasPerms()
@@ -185,6 +193,22 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                     "it in Recent apps — otherwise the phone kills auto-protect overnight.",
                 style = MaterialTheme.typography.bodySmall, color = Color.Gray
             )
+            StatusRow("5. Notification access (scan WhatsApp/Telegram)", notifOk())
+            if (!notifOk()) {
+                OutlinedButton(
+                    onClick = {
+                        try {
+                            ctx.startActivity(
+                                Intent(SysSettings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                            )
+                        } catch (_: Exception) {
+                        } finally {
+                            tick++
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Allow notification access") }
+            }
             Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -199,6 +223,13 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                         Switch(
                             checked = autoSms,
                             onCheckedChange = { autoSms = it; container.autoSms = it; tick++ }
+                        )
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Auto-scan app messages")
+                        Switch(
+                            checked = autoApps,
+                            onCheckedChange = { autoApps = it; container.autoApps = it; tick++ }
                         )
                     }
                     Text(

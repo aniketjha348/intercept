@@ -47,6 +47,7 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
     var lang by remember { mutableStateOf(container.language) }
     var autoCalls by remember { mutableStateOf(container.autoCalls) }
     var autoSms by remember { mutableStateOf(container.autoSms) }
+    var autoApps by remember { mutableStateOf(container.autoApps) }
     var status by remember { mutableStateOf<String?>(null) }
 
     val roleLauncher = rememberLauncherForActivityResult(
@@ -112,6 +113,13 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
                     Text("Risky texts raise an alert.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
                 Switch(checked = autoSms, onCheckedChange = { autoSms = it; container.autoSms = it })
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column(Modifier.weight(1f)) {
+                    Text("Auto-scan app messages")
+                    Text("WhatsApp/Telegram notifications, zero paste.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                }
+                Switch(checked = autoApps, onCheckedChange = { autoApps = it; container.autoApps = it })
             }
             Text("Language (auto-detects per message)", style = MaterialTheme.typography.labelLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

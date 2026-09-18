@@ -62,6 +62,11 @@ class AppContainer(context: Context) {
         get() = prefs.getBoolean("auto_sms", false)
         set(v) = prefs.edit().putBoolean("auto_sms", v).apply()
 
+    /** Auto-scan WhatsApp/Telegram message notifications (needs notification access). */
+    var autoApps: Boolean
+        get() = prefs.getBoolean("auto_apps", false)
+        set(v) = prefs.edit().putBoolean("auto_apps", v).apply()
+
     /** Set by screening service / home demo so routes stay free of special chars. */
     var pendingIncomingCaller: String? = null
     val sessionCallers = mutableMapOf<String, String>()
