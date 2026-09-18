@@ -49,6 +49,46 @@ def start(body: StartCall):
             "language": sess.language, "owner_name": sess.owner_name}
 
 
+class InboundCall(BaseModel):
+    caller: str = "unknown"
+    session_id: str | None = None
+    language: str = "auto"
+    owner_name: str | None = None
+
+
+def _inbound_payload(sess, reused: bool) -> dict:
+    return {"session_id": sess.id, "event": "CALL_STARTED", "caller": sess.caller,
+            "language": sess.language, "owner_name": sess.owner_name,
+            "reused": reused}
+
+
+@router.post("/inbound")
+def inbound(body: InboundCall):
+    """A call that arrives on our SIP number (forwarded, or dialed direct) has
+    no Android app in front of it to call /start, so the voice agent asks for
+    its session here.
+
+    Reuse the app's session when it already made one — a call answered on the
+    phone first, then bridged — else match an active session for the same
+    caller, else create it. Either way the transcript, the risk trail and the
+    report have a session to attach to; nothing is orphaned on the SIP path.
+    """
+    if body.session_id:
+        sess = MANAGER.get(body.session_id)
+        if sess and sess.active:
+            return _inbound_payload(sess, reused=True)
+    caller = (body.caller or "unknown").strip() or "unknown"
+    for existing in MANAGER.calls.values():
+        if existing.active and existing.caller == caller:
+            return _inbound_payload(existing, reused=True)
+    sid = new_session_id("call")
+    sess = MANAGER.create(sid, caller, body.language)
+    sess.owner_name = (body.owner_name or "").strip()[:60]
+    sess.memory.owner = sess.owner_name
+    REPO.ensure_session(sid, caller)
+    return _inbound_payload(sess, reused=False)
+
+
 @router.post("/{session_id}/transcript")
 def transcript(session_id: str, turn: Turn):
     sess = MANAGER.get(session_id)

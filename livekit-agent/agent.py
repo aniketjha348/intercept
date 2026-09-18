@@ -8,6 +8,13 @@ Run (laptop, demo network):
     copy .env.example .env.local   (fill keys, never commit)
     python agent.py dev
 Keep it running; point the LiveKit dispatch rule at agent `intercept-agent`.
+
+Session linking: an inbound SIP call has no Android app in front of it, so the
+agent asks the backend for its session via POST /calls/inbound (reusing the
+app's session when the call was answered on the phone first). The dispatch
+rule's roomConfig metadata carries who the call is for — read with ctx.job.
+metadata. Room names are never trusted as session ids: LiveKit names an
+individual-rule room after the CALLER'S NUMBER, not our session.
 """
 from __future__ import annotations
 
@@ -35,9 +42,22 @@ MODEL = os.environ.get(
     "LIVE_MODEL", "gemini-2.5-flash-native-audio-preview-12-2025")
 
 
-CALL_SID: str | None = None
-_post_ok = True
-_closing_sent = False
+class CallState:
+    """Everything one caller's conversation needs to remember.
+
+    This used to be module-level globals, which quietly bound the worker to a
+    single call: a second concurrent call overwrote the session id, and
+    `closing_sent` never reset, so only the FIRST critical caller ever got the
+    closing line. One instance per job — no state crosses calls.
+    """
+
+    __slots__ = ("sid", "post_ok", "closing_sent")
+
+    def __init__(self, sid: str | None) -> None:
+        self.sid = sid
+        self.post_ok = True
+        self.closing_sent = False
+
 
 # CRITICAL means the engine is past doubting: the caller is being told the
 # call is over, in one firm line, instead of being politely interrogated
@@ -52,16 +72,73 @@ CRITICAL_CLOSING = (
 )
 
 
-def post_turn(text: str) -> None:
-    """Mirror the caller turn into our backend call session (if the room
-    carries one: intercept-<sid>). Transcript, risk, report all keep working.
-    Stops posting after the session ends (404) — the voice chat continues."""
-    global _post_ok
-    if not _post_ok or not CALL_SID:
+def job_metadata(ctx: JobContext) -> dict:
+    """The dispatch rule's roomConfig metadata as a dict (best effort)."""
+    raw = getattr(getattr(ctx, "job", None), "metadata", "") or ""
+    if not raw:
+        return {}
+    try:
+        data = _json.loads(raw)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        logger.warning("dispatch metadata is not JSON: %.120s", raw)
+        return {}
+
+
+def caller_number(ctx: JobContext) -> str:
+    """Who is calling, from the SIP participant's attributes.
+
+    LiveKit sets sip.phoneNumber / sip.trunkPhoneNumber on the inbound
+    participant. Only if those are absent do we fall back to the digits in the
+    room name (an individual rule names the room after the caller)."""
+    try:
+        for participant in ctx.room.remote_participants.values():
+            attrs = getattr(participant, "attributes", None) or {}
+            number = attrs.get("sip.phoneNumber") or attrs.get("sip.trunkPhoneNumber")
+            if number:
+                return str(number)
+    except Exception as exc:
+        logger.warning("caller lookup failed: %s", exc)
+    name = getattr(ctx.room, "name", "") or ""
+    digits = "".join(ch for ch in name if ch.isdigit() or ch == "+")
+    return digits or "unknown"
+
+
+def resolve_session(caller: str, session_id: str | None, owner_name: str) -> str | None:
+    """Ask the backend for this call's session (create or reuse). None on any
+    failure, so the voice chat still runs even if the backend is unreachable."""
+    try:
+        payload = _json.dumps({
+            "caller": caller,
+            "session_id": session_id,
+            "owner_name": owner_name,
+            "language": "auto",
+        }).encode()
+        req = urllib.request.Request(
+            BACKEND + "/calls/inbound",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=25) as r:
+            data = _json.load(r)
+        sid = data.get("session_id")
+        if sid:
+            logger.info("session %s (%s)", sid,
+                        "reused" if data.get("reused") else "created")
+        return sid
+    except Exception as exc:
+        logger.warning("inbound session resolve failed: %s", exc)
+        return None
+
+
+def post_turn(state: CallState, text: str) -> None:
+    """Mirror the caller turn into our backend call session. Stops posting
+    after the session ends (404) — the voice chat continues regardless."""
+    if not state.post_ok or not state.sid:
         return
     try:
         req = urllib.request.Request(
-            f"{BACKEND}/calls/{CALL_SID}/transcript",
+            f"{BACKEND}/calls/{state.sid}/transcript",
             data=_json.dumps({"text": text, "speaker": "caller"}).encode(),
             headers={"Content-Type": "application/json"},
         )
@@ -69,7 +146,7 @@ def post_turn(text: str) -> None:
             pass
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            _post_ok = False
+            state.post_ok = False
     except Exception as exc:
         logger.warning("turn post failed: %s", exc)
 
@@ -111,11 +188,21 @@ class InterceptAgent(voice.Agent):
 
 async def entrypoint(ctx: JobContext):
     await ctx.connect()
-    global CALL_SID
-    name = getattr(ctx.room, "name", "") or ""
-    CALL_SID = name[len("intercept-"):] if name.startswith("intercept-") else None
-    if CALL_SID:
-        logger.info("linked backend session %s", CALL_SID)
+    meta = job_metadata(ctx)
+    caller = str(meta.get("caller") or "") or caller_number(ctx)
+    owner_name = str(meta.get("owner_name") or meta.get("owner") or "")
+    sid = resolve_session(
+        caller,
+        session_id=meta.get("session_id"),
+        owner_name=owner_name,
+    )
+    if not sid:
+        # Backend unreachable: keep the old room-name convention as a last
+        # resort so a phone-created session can still catch the turns.
+        name = getattr(ctx.room, "name", "") or ""
+        sid = name[len("intercept-"):] if name.startswith("intercept-") else None
+    state = CallState(sid)
+
     session = voice.AgentSession(
         llm=google.beta.realtime.RealtimeModel(
             model=MODEL,
@@ -125,14 +212,13 @@ async def entrypoint(ctx: JobContext):
 
     @session.on("user_input_transcribed")
     def on_transcript(event: voice.UserInputTranscribedEvent):
-        global _closing_sent
         if not event.is_final:
             return
         text = (event.transcript or "").strip()
         if not text:
             return
         print(f"\nCALLER: {text}", flush=True)
-        post_turn(text)
+        post_turn(state, text)
         res = score_risk(text)
         if res is None:
             return
@@ -142,8 +228,8 @@ async def entrypoint(ctx: JobContext):
             print("\n🚨 HIGH RISK — probable scam", flush=True)
             if res["simple"]:
                 print(res["simple"], flush=True)
-        if res["level"].upper() == "CRITICAL" and not _closing_sent:
-            _closing_sent = True
+        if res["level"].upper() == "CRITICAL" and not state.closing_sent:
+            state.closing_sent = True
             print("\n🛑 CRITICAL — delivering the closing line", flush=True)
             asyncio.create_task(session.generate_reply(instructions=CRITICAL_CLOSING))
 
