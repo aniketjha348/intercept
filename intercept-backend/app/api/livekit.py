@@ -50,11 +50,16 @@ def token(identity: str = Query(default="judge", max_length=64),
     # named after their session, so only mint one for a session that exists and
     # is still being screened: a stale or guessed id must not walk into a live
     # conversation. (Random rooms for the public demo are unaffected.)
+    resolved = ""
     if wanted.startswith("intercept-"):
         sess = MANAGER.get(wanted[len("intercept-"):])
         if sess is None or not sess.active:
             raise HTTPException(404, "call session not found or ended")
-    room_name = wanted or f"intercept-{_secrets.token_hex(4)}"
+        # A SIP dispatch rule names the room after the caller, so the room the
+        # agent landed in is NOT `intercept-<sid>`. Join the real one; fall back
+        # to the id-named room for app-created (non-SIP) calls.
+        resolved = sess.room
+    room_name = resolved or wanted or f"intercept-{_secrets.token_hex(4)}"
     tk = (lk.AccessToken(cfg.LIVEKIT_KEY, cfg.LIVEKIT_SECRET)
           .with_identity(ident)
           .with_grants(lk.VideoGrants(room_join=True, room=room_name)))

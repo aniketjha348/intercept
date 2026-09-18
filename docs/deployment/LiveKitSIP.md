@@ -88,6 +88,12 @@ called). The backend reverse-maps it with
 `GET /assistant/forwarding/owner` → the session is bound to `owner_id`, so with
 a DID per owner each caller lands on the right person's assistant.
 
+It also sends **`room`** — the room the agent actually landed in. A SIP dispatch
+rule names the room after the caller (`intercept-<caller><random>`), not after
+our session id, so the app cannot derive it. The backend stores it on the
+session and `GET /livekit/token` mints the app's token for *that* room; without
+this the app joins `intercept-<sid>` and never hears the agent.
+
 ## 4b. In-app activation (ASSISTANT_FORWARD_NUMBER)
 
 The app points the carrier at the number for you: **Home → "Let the AI answer

@@ -16,6 +16,10 @@ class CallSession:
     owner_name: str = ""
     # Who this call belongs to, when we can tell (per-user forwarding DID).
     owner_id: str = ""
+    # The LiveKit room this call is actually in. A SIP dispatch rule names the
+    # room after the caller, NOT after our session id — so the agent reports the
+    # room it landed in, and the app joins THAT room instead of guessing.
+    room: str = ""
     memory: CallMemory = field(default_factory=CallMemory)
     scam_memory: ScamMemory = field(default_factory=ScamMemory)
     transcript: list[dict] = field(default_factory=list)

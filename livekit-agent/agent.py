@@ -117,7 +117,7 @@ def dialed_number(ctx: JobContext) -> str:
 
 
 def resolve_session(caller: str, session_id: str | None, owner_name: str,
-                    dialed: str = "") -> str | None:
+                    dialed: str = "", room: str = "") -> str | None:
     """Ask the backend for this call's session (create or reuse). None on any
     failure, so the voice chat still runs even if the backend is unreachable."""
     try:
@@ -126,6 +126,9 @@ def resolve_session(caller: str, session_id: str | None, owner_name: str,
             "session_id": session_id,
             "owner_name": owner_name,
             "dialed": dialed,
+            # The room we actually landed in: a SIP rule names it after the
+            # caller, so the app cannot derive it — it joins this one.
+            "room": room,
             "language": "auto",
         }).encode()
         req = urllib.request.Request(
@@ -211,6 +214,7 @@ async def entrypoint(ctx: JobContext):
         owner_name=owner_name,
         # Prefer the dialled DID from the trunk; metadata can override for tests.
         dialed=str(meta.get("dialed") or "") or dialed_number(ctx),
+        room=getattr(ctx.room, "name", "") or "",
     )
     if not sid:
         # Backend unreachable: keep the old room-name convention as a last

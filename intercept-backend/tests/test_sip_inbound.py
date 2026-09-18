@@ -51,6 +51,16 @@ def test_inbound_ignores_ended_session():
     assert d["reused"] is False
 
 
+def test_inbound_stores_the_room_the_agent_landed_in():
+    from app.realtime.sessions import MANAGER
+    c = TestClient(app)
+    d = c.post("/calls/inbound",
+               json={"caller": "sip-room-1", "room": "intercept-9876543210"}).json()
+    # A SIP rule names the room after the caller, so the app cannot derive it.
+    assert d["room"] == "intercept-9876543210"
+    assert MANAGER.get(d["session_id"]).room == "intercept-9876543210"
+
+
 def test_inbound_session_accepts_turns_and_shows_live():
     c = TestClient(app)
     sid = c.post("/calls/inbound",

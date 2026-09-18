@@ -29,25 +29,23 @@ class InCallAudio(context: Context) {
             prevSpeaker = audio?.isSpeakerphoneOn == true
             audio?.mode = AudioManager.MODE_IN_COMMUNICATION
             // AI screening is SILENT to the owner: earpiece off, speaker off.
-            // The owner must NOT hear the guardian voice at all — only the
-            // caller hears it through the call uplink (STREAM_VOICE_CALL).
+            // The owner must NOT hear the guardian voice or the caller at all —
+            // the caller hears the guardian through the call uplink.
             audio?.isSpeakerphoneOn = false
-            // Mute the earpiece output so even the phone line audio doesn't
-            // reach the owner's ear. The mic stays live for the caller's voice.
-            try {
-                audio?.isStreamMute(AudioManager.STREAM_VOICE_CALL)?.let {
-                    if (!it) audio?.adjustStreamVolume(
-                        AudioManager.STREAM_VOICE_CALL,
-                        AudioManager.ADJUST_MUTE, 0
-                    )
-                }
-            } catch (_: Exception) {
-            }
-            // Max the uplink so the caller hears the guardian clearly.
+            // Volume FIRST, mute LAST. setStreamVolume() takes a stream OUT of
+            // mute, so muting before it silently undid the mute and the owner
+            // heard the whole call. This order is the fix — do not swap it.
             prevVolume = audio?.getStreamVolume(AudioManager.STREAM_VOICE_CALL) ?: -1
             val max = audio?.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL) ?: -1
             if (max > 0) {
                 audio?.setStreamVolume(AudioManager.STREAM_VOICE_CALL, max, 0)
+            }
+            try {
+                audio?.adjustStreamVolume(
+                    AudioManager.STREAM_VOICE_CALL,
+                    AudioManager.ADJUST_MUTE, 0
+                )
+            } catch (_: Exception) {
             }
         } catch (_: Exception) {
         }
