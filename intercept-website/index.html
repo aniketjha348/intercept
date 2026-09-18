@@ -56,11 +56,23 @@
       </div>
 
       <div class="room" id="room">
+        <div class="room-hardware-bezel">
+          <div class="bezel-leds">
+            <span class="led green" title="Power: Nominal"><i></i> PWR</span>
+            <span class="led mint" title="AI Core: Active Interception"><i></i> AI_CORE</span>
+            <span class="led cyan" title="Telecom Tap: Active"><i></i> GSM_TAP</span>
+          </div>
+          <div class="bezel-meta">
+            <span>TEL // IN-01 // ACTIVE_INTERCEPT</span>
+            <span class="bezel-dot">•</span>
+            <span>ENCR: AES-GCM-256</span>
+          </div>
+        </div>
         <div class="room-bar">
           <div class="room-status-wrap">
             <span class="live"><span class="livedot"></span>Screening Call</span>
             <span class="room-waves" aria-hidden="true">
-              <i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
             </span>
           </div>
           <span class="num">
@@ -130,7 +142,7 @@
   </section>
 
   <section class="band">
-    <div class="section-badge">How It Works</div>
+    <div class="section-badge">// 01 // SETUP_FLOW</div>
     <h2>Set up once. Protected ever after.</h2>
     <p class="standfirst">Two minutes of setup. After that, strangers are handled and your contacts ring through.</p>
     <ol class="steps">
@@ -159,7 +171,7 @@
   </section>
 
   <section class="section">
-    <div class="section-badge">Risk Engine</div>
+    <div class="section-badge">// 02 // MULTI_VECTOR_ENGINE</div>
     <h2>One engine reads everything</h2>
     <p class="standfirst">Calls, SMS, WhatsApp forwards, screenshots, links, QR codes — the same risk engine scores them all, on one scale from 0 to 100.</p>
     
@@ -251,6 +263,55 @@
         <p class="calc-desc" id="calc-verdict-desc">Critical fraud attempt detected. Intercept AI automatically terminates the call and prevents OTP forwarding.</p>
       </div>
     </div>
+
+    <!-- Scam DNA Multi-Vector Pipeline Schematic -->
+    <div class="dna-schematic">
+      <div class="dna-header">
+        <span class="dna-title">Scam DNA™ Multi-Vector Inspection Pipeline</span>
+        <span class="dna-subtitle">How Intercept AI deconstructs incoming signals in under 200ms without retaining private user data</span>
+      </div>
+      <div class="dna-grid">
+        <div class="dna-card">
+          <div class="dna-card-header">
+            <span class="dna-num">VECTOR 01</span>
+            <span class="dna-status amber">ACTIVE AUDIT</span>
+          </div>
+          <h4>Authority Impersonation</h4>
+          <p>Flags spoofed institutional claims: SBI, HDFC, CBI, TRAI, Police, Customs, Electricity Board.</p>
+          <div class="dna-meter"><i style="width: 85%;"></i></div>
+        </div>
+
+        <div class="dna-card">
+          <div class="dna-card-header">
+            <span class="dna-num">VECTOR 02</span>
+            <span class="dna-status red">HIGH THREAT</span>
+          </div>
+          <h4>Coercive Urgency</h4>
+          <p>Scores psychological coercion: "Within 2 hours", "Arrest warrant", "Power cut at 9:30 PM".</p>
+          <div class="dna-meter"><i style="width: 92%;"></i></div>
+        </div>
+
+        <div class="dna-card">
+          <div class="dna-card-header">
+            <span class="dna-num">VECTOR 03</span>
+            <span class="dna-status crit">LINE SEVERANCE</span>
+          </div>
+          <h4>Credential Interception</h4>
+          <p>Intercepts OTP, UPI MPIN, CVV, or card demands. Cuts call immediately before data leaves handset.</p>
+          <div class="dna-meter"><i style="width: 99%;"></i></div>
+        </div>
+
+        <div class="dna-card">
+          <div class="dna-card-header">
+            <span class="dna-num">VECTOR 04</span>
+            <span class="dna-status cyan">PAYLOAD SCAN</span>
+          </div>
+          <h4>Payload &amp; Link Armor</h4>
+          <p>Disassembles malicious APK packages, phishing shortlinks, and deceptive UPI QR codes.</p>
+          <div class="dna-meter"><i style="width: 78%;"></i></div>
+        </div>
+      </div>
+    </div>
     
     <div class="langs-wrap">
       <span class="langs-label">Engine Languages:</span>
@@ -263,7 +324,7 @@
   </section>
 
   <section class="band demo-band">
-    <div class="section-badge">Interactive Test</div>
+    <div class="section-badge">// 03 // LIVE_SANDBOX</div>
     <h2>Try the engine right here</h2>
     <p class="standfirst">Paste any suspicious message or test a live scenario. The engine scores it — the same logic the app runs.</p>
     
@@ -297,7 +358,7 @@
   </section>
 
   <section class="section">
-    <div class="section-badge">FAQ</div>
+    <div class="section-badge">// 04 // AUDIT_FAQ</div>
     <h2>Asked often</h2>
     <div class="faq">
       <details>
