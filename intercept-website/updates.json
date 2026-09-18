@@ -281,5 +281,22 @@
       "Is version me taze fixes aur sudhaar",
       "App kholte hi update mil jayega"
     ]
+  },
+  {
+    "version_code": 21,
+    "version_name": "0.6.1",
+    "date": "2026-09-18",
+    "force": false,
+    "apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk",
+    "notes_en": [
+      "v0.6.1: earpiece routing fix — AI talks to caller, not user",
+      "docs: add the device check for earpiece screening audio",
+      "fix: AI voice now reaches the CALLER not the user — earpiece routing + call-stream mic + MODE_IN_COMMUNICATION",
+      "Release v0.6.0: changelog feeds (auto)"
+    ],
+    "notes_hi": [
+      "Is version me taze fixes aur sudhaar",
+      "App kholte hi update mil jayega"
+    ]
   }
 ]
