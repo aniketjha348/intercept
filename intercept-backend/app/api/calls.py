@@ -54,12 +54,15 @@ class InboundCall(BaseModel):
     session_id: str | None = None
     language: str = "auto"
     owner_name: str | None = None
+    # The number that was dialled (our DID). A forwarded call arrives at the
+    # owner's own number, so this — not the caller — says whose assistant it is.
+    dialed: str | None = None
 
 
 def _inbound_payload(sess, reused: bool) -> dict:
     return {"session_id": sess.id, "event": "CALL_STARTED", "caller": sess.caller,
             "language": sess.language, "owner_name": sess.owner_name,
-            "reused": reused}
+            "owner_id": sess.owner_id, "reused": reused}
 
 
 @router.post("/inbound")
@@ -73,17 +76,24 @@ def inbound(body: InboundCall):
     caller, else create it. Either way the transcript, the risk trail and the
     report have a session to attach to; nothing is orphaned on the SIP path.
     """
+    dialed = (body.dialed or "").strip()
+    owner_id = REPO.user_for_forward_number(dialed) if dialed else ""
     if body.session_id:
         sess = MANAGER.get(body.session_id)
         if sess and sess.active:
+            if owner_id:
+                sess.owner_id = owner_id
             return _inbound_payload(sess, reused=True)
     caller = (body.caller or "unknown").strip() or "unknown"
     for existing in MANAGER.calls.values():
         if existing.active and existing.caller == caller:
+            if owner_id:
+                existing.owner_id = owner_id
             return _inbound_payload(existing, reused=True)
     sid = new_session_id("call")
     sess = MANAGER.create(sid, caller, body.language)
     sess.owner_name = (body.owner_name or "").strip()[:60]
+    sess.owner_id = owner_id or ""
     sess.memory.owner = sess.owner_name
     REPO.ensure_session(sid, caller)
     return _inbound_payload(sess, reused=False)

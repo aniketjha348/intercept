@@ -40,6 +40,9 @@ class Repository:
     def __init__(self) -> None:
         self.reports: dict[str, dict] = {}
         self.events: list[dict] = []
+        # user_id -> forwarding DID. In-memory mirror so the mapping survives
+        # without Postgres (same pattern as reports above).
+        self._forward: dict[str, str] = {}
         self._db = False
         self._retry_at = 0.0  # next allowed DB reconnect attempt (monotonic)
         self._ensure()
@@ -207,6 +210,80 @@ class Repository:
             return [{"tactics": r[0], "objective": r[1], "risk": r[2]} for r in rows]
         except Exception:
             return []
+
+
+    # ---- forwarding numbers (one DID per owner) ----
+
+    def set_forward_number(self, user_id: str, number: str) -> None:
+        """Bind an owner to the DID their calls forward to. Blank input is a
+        no-op — an empty mapping is worse than none (the app would dial `*67*#`)."""
+        user_id = (user_id or "").strip()
+        number = (number or "").strip()
+        if not user_id or not number:
+            return
+        self._forward[user_id] = number
+        self._ensure()
+        if not self._db:
+            return
+        try:
+            from app.db import models
+            from app.db.session import get_engine
+            from sqlalchemy.dialects.postgresql import insert
+            eng = get_engine()
+            with eng.begin() as c:
+                c.execute(insert(models.UserForwarding).values(
+                    user_id=user_id, number=number).on_conflict_do_update(
+                        index_elements=["user_id"], set_={"number": number}))
+        except Exception:
+            pass
+
+    def get_forward_number(self, user_id: str) -> str | None:
+        user_id = (user_id or "").strip()
+        if not user_id:
+            return None
+        if user_id in self._forward:
+            return self._forward[user_id]
+        self._ensure()
+        if not self._db:
+            return None
+        try:
+            from app.db import models
+            from app.db.session import get_engine
+            from sqlalchemy import select
+            eng = get_engine()
+            with eng.connect() as c:
+                val = c.execute(select(models.UserForwarding.number).where(
+                    models.UserForwarding.user_id == user_id)).scalar_one_or_none()
+            if val:
+                self._forward[user_id] = val
+            return val
+        except Exception:
+            return None
+
+    def user_for_forward_number(self, number: str) -> str | None:
+        """Reverse lookup: an inbound call to a DID belongs to its owner."""
+        number = (number or "").strip()
+        if not number:
+            return None
+        for uid, num in self._forward.items():
+            if num == number:
+                return uid
+        self._ensure()
+        if not self._db:
+            return None
+        try:
+            from app.db import models
+            from app.db.session import get_engine
+            from sqlalchemy import select
+            eng = get_engine()
+            with eng.connect() as c:
+                uid = c.execute(select(models.UserForwarding.user_id).where(
+                    models.UserForwarding.number == number)).scalar_one_or_none()
+            if uid:
+                self._forward[uid] = number
+            return uid
+        except Exception:
+            return None
 
 
 REPO = Repository()

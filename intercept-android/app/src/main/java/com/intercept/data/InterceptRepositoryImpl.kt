@@ -107,7 +107,7 @@ class InterceptRepositoryImpl(
     override suspend fun forwarding(): Forwarding = try {
         val d = api.forwarding()
         Forwarding(
-            configured = d.configured, number = d.number,
+            configured = d.configured, number = d.number, source = d.source,
             busyActivate = d.busyActivate, busyDeactivate = d.busyDeactivate,
             noAnswerActivate = d.noAnswerActivate, noAnswerDeactivate = d.noAnswerDeactivate,
             reason = d.reason,

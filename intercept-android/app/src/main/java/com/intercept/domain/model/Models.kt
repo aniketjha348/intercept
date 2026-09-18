@@ -118,6 +118,8 @@ data class CallRecord(
 data class Forwarding(
     val configured: Boolean = false,
     val number: String = "",
+    /** "user" = this owner's own DID, "default" = shared fallback, "unset". */
+    val source: String = "",
     val busyActivate: String = "",
     val busyDeactivate: String = "##67#",
     val noAnswerActivate: String = "",

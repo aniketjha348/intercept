@@ -164,6 +164,8 @@ data class LatestDto(
 data class ForwardingDto(
     val configured: Boolean = false,
     val number: String = "",
+    /** "user" = this owner's own DID, "default" = shared fallback, "unset". */
+    val source: String = "",
     @SerialName("busy_activate") val busyActivate: String = "",
     @SerialName("busy_deactivate") val busyDeactivate: String = "##67#",
     @SerialName("noanswer_activate") val noAnswerActivate: String = "",

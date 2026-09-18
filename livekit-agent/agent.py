@@ -85,26 +85,39 @@ def job_metadata(ctx: JobContext) -> dict:
         return {}
 
 
-def caller_number(ctx: JobContext) -> str:
-    """Who is calling, from the SIP participant's attributes.
-
-    LiveKit sets sip.phoneNumber / sip.trunkPhoneNumber on the inbound
-    participant. Only if those are absent do we fall back to the digits in the
-    room name (an individual rule names the room after the caller)."""
+def _sip_attribute(ctx: JobContext, key: str) -> str:
+    """One SIP participant attribute from the inbound caller (best effort)."""
     try:
         for participant in ctx.room.remote_participants.values():
             attrs = getattr(participant, "attributes", None) or {}
-            number = attrs.get("sip.phoneNumber") or attrs.get("sip.trunkPhoneNumber")
-            if number:
-                return str(number)
+            value = attrs.get(key)
+            if value:
+                return str(value)
     except Exception as exc:
-        logger.warning("caller lookup failed: %s", exc)
+        logger.warning("sip attribute %s lookup failed: %s", key, exc)
+    return ""
+
+
+def caller_number(ctx: JobContext) -> str:
+    """Who is calling. Only if the attribute is absent do we fall back to the
+    digits in the room name (an individual rule names the room after them)."""
+    number = _sip_attribute(ctx, "sip.phoneNumber")
+    if number:
+        return number
     name = getattr(ctx.room, "name", "") or ""
     digits = "".join(ch for ch in name if ch.isdigit() or ch == "+")
     return digits or "unknown"
 
 
-def resolve_session(caller: str, session_id: str | None, owner_name: str) -> str | None:
+def dialed_number(ctx: JobContext) -> str:
+    """The number that was dialled — our DID. With a DID per owner this is what
+    identifies whose assistant is answering, so the backend can bind the
+    session to that owner."""
+    return _sip_attribute(ctx, "sip.trunkPhoneNumber")
+
+
+def resolve_session(caller: str, session_id: str | None, owner_name: str,
+                    dialed: str = "") -> str | None:
     """Ask the backend for this call's session (create or reuse). None on any
     failure, so the voice chat still runs even if the backend is unreachable."""
     try:
@@ -112,6 +125,7 @@ def resolve_session(caller: str, session_id: str | None, owner_name: str) -> str
             "caller": caller,
             "session_id": session_id,
             "owner_name": owner_name,
+            "dialed": dialed,
             "language": "auto",
         }).encode()
         req = urllib.request.Request(
@@ -195,6 +209,8 @@ async def entrypoint(ctx: JobContext):
         caller,
         session_id=meta.get("session_id"),
         owner_name=owner_name,
+        # Prefer the dialled DID from the trunk; metadata can override for tests.
+        dialed=str(meta.get("dialed") or "") or dialed_number(ctx),
     )
     if not sid:
         # Backend unreachable: keep the old room-name convention as a last

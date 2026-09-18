@@ -83,15 +83,27 @@ a real session either way.
 `metadata.session_id` is optional: supply it only if you create the session
 *before* the call arrives.
 
+The agent also sends **`dialed`** (`sip.trunkPhoneNumber`, the DID that was
+called). The backend reverse-maps it with
+`GET /assistant/forwarding/owner` → the session is bound to `owner_id`, so with
+a DID per owner each caller lands on the right person's assistant.
+
 ## 4b. In-app activation (ASSISTANT_FORWARD_NUMBER)
 
 The app points the carrier at the number for you: **Home → "Let the AI answer
 my calls"**. Two settings make it work:
 
-- `ASSISTANT_FORWARD_NUMBER` (backend env) — the number from step 2. The app
-  fetches it from `GET /assistant/forwarding`, which also returns the USSD
-  codes to dial (`*67*<number>#` = forward when busy, `##67#` = clear).
-- The screen dials that code, then sets `forwarding_on` on the device.
+- The app fetches its number from `GET /assistant/forwarding` (with its
+  `X-User-Id` header), which also returns the USSD codes to dial
+  (`*67*<number>#` = forward when busy, `##67#` = clear). The screen dials that
+  code, then sets `forwarding_on` on the device.
+- **Per-owner DID:** bind one with
+  `POST /assistant/forwarding {"number": "+91..."}` + `X-User-Id`; the GET then
+  returns `source: "user"` instead of the shared `ASSISTANT_FORWARD_NUMBER`
+  fallback (`source: "default"`). One number per owner is what lets the inbound
+  leg know *whose* assistant is answering.
+- `ASSISTANT_FORWARD_NUMBER` (backend env) stays as the shared default when an
+  owner has no dedicated DID.
 
 After that, `InterceptScreeningService` **declines** an unknown call, the
 carrier forwards it to the number, and the AI answers. Saved contacts always

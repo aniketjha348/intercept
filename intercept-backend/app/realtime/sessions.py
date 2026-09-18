@@ -14,6 +14,8 @@ class CallSession:
     caller: str
     language: str = "auto"
     owner_name: str = ""
+    # Who this call belongs to, when we can tell (per-user forwarding DID).
+    owner_id: str = ""
     memory: CallMemory = field(default_factory=CallMemory)
     scam_memory: ScamMemory = field(default_factory=ScamMemory)
     transcript: list[dict] = field(default_factory=list)

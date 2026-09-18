@@ -25,7 +25,9 @@ Telephony → Phone Numbers → your number → Assign dispatch rule
 Put who the call is for in the rule's `roomConfig` metadata — the agent reads it
 as `ctx.job.metadata` and links the call to a backend session via
 `POST /calls/inbound` (reusing the app's session when the call was answered on
-the phone first). Full JSON + troubleshooting: [`docs/deployment/LiveKitSIP.md`](../docs/deployment/LiveKitSIP.md).
+the phone first). It also passes the dialled number (`sip.trunkPhoneNumber`), so
+with a DID per owner the backend binds the session to the right person.
+Full JSON + troubleshooting: [`docs/deployment/LiveKitSIP.md`](../docs/deployment/LiveKitSIP.md).
 
 ## Judge demo (60 seconds)
 

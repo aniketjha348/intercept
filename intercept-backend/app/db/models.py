@@ -46,5 +46,15 @@ try:
         objective = Column(String)
         risk = Column(Integer, default=0)
 
+    class UserForwarding(Base):
+        """One DID per owner: the number their calls are forwarded to. Unique on
+        the number so two owners can never claim the same one (that would route
+        a caller into someone else's assistant)."""
+        __tablename__ = "user_forwarding"
+        user_id = Column(String, primary_key=True)
+        number = Column(String, unique=True)
+        updated_at = Column(DateTime(timezone=True), server_default=func.now(),
+                            onupdate=func.now())
+
 except Exception:  # SQLAlchemy optional for MVP boot
     Base = object  # type: ignore

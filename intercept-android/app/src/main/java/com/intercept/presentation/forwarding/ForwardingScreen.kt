@@ -114,6 +114,15 @@ fun ForwardingScreen(nav: NavController, container: AppContainer) {
                         style = MaterialTheme.typography.bodyLarge,
                         color = Ink,
                     )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        if (f.source == "user")
+                            "This is your own dedicated number."
+                        else
+                            "Shared number — a dedicated line for you can be assigned.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Muted,
+                    )
                     Spacer(Modifier.height(12.dp))
                     Button(
                         onClick = {
