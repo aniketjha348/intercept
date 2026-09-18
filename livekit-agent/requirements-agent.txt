@@ -1,0 +1,4 @@
+# Pinned: agent worker runs on the demo laptop (NOT in the Docker image).
+livekit-agents==1.8.2
+livekit-plugins-google==1.8.2
+python-dotenv==1.2.3

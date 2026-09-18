@@ -1,20 +1,22 @@
 # Intercept AI voice agent (hackathon: live calls that wow judges)
 
-Gemini Live voice + **our production risk engine** as the detection brain
-(every caller turn hits `/analyze/text` — Hindi/Hinglish/English, OTP traps,
-bank impersonation — not keyword toys).
+Python stack (Kotlin + Python only — no Node): Gemini Live voice +
+**our production risk engine** as the detection brain (every caller turn hits
+`/analyze/text` — Hindi/Hinglish/English, OTP traps, bank impersonation).
 
-## Run it (5 min)
+## Run it (5 min, demo laptop)
 
 ```powershell
 cd livekit-agent
-npm install
-Copy-Item .env.example .env.local   # then fill keys
-node src/agent.mjs
+pip install -r requirements-agent.txt
+Copy-Item .env.example .env.local   # then fill keys, never commit
+python agent.py dev
 ```
 
 Worker registers as `intercept-agent`. Keep it running on the demo laptop
-(phone hotspot as backup network).
+(phone hotspot as backup network). `.env.local` needs:
+`LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `GOOGLE_API_KEY`
+(+ optional `LIVE_MODEL`, `INTERCEPT_API`).
 
 ## Wire the free US number (dashboard, once)
 
