@@ -12,8 +12,8 @@ android {
         applicationId = "com.intercept"
         minSdk = 29
         targetSdk = 34
-        versionCode = 4
-        versionName = "0.3.1"
+        versionCode = 5
+        versionName = "0.3.2"
     }
     // Signing order: real upload key from env (Play, never committed) →
     // shared repo debug keystore (same signature on EVERY build, everywhere:

@@ -68,5 +68,20 @@
       "डायलर प्रॉम्प्ट फेल हो तो Default-apps का रास्ता",
       "हर बिल्ड पर एक ही सिग्नेचर — अपडेट साफ लगेगा"
     ]
+  },
+  {
+    "version_code": 5,
+    "version_name": "0.3.2",
+    "date": "2026-09-18",
+    "force": false,
+    "apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk",
+    "notes_en": [
+      "In-app updates that never crash on new Android versions",
+      "Same signature forever — updates install over the old app"
+    ],
+    "notes_hi": [
+      "ऐप के अंदर अपडेट — नए Android पर क्रैश नहीं",
+      "हमेशा एक ही सिग्नेचर — अपडेट पुराने ऐप पर चढ़ेगा"
+    ]
   }
 ]

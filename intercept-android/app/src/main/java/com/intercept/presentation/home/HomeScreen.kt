@@ -79,7 +79,12 @@ fun HomeScreen(nav: NavController, container: AppContainer) {
                 }
             }
         }
-        ctx.registerReceiver(receiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+        // Android 13+ demands an explicit export flag at registration; the
+        // compat helper keeps it working back to Android 10 (our minSdk).
+        androidx.core.content.ContextCompat.registerReceiver(
+            ctx, receiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+            androidx.core.content.ContextCompat.RECEIVER_EXPORTED
+        )
         onDispose { ctx.unregisterReceiver(receiver) }
     }
 
