@@ -96,9 +96,9 @@
   --bg: #0a0d12;
   --bg-subtle: #0f141c;
   --bg-alt: #131922;
-  --text: #f3f4f6;
+  --text: #f3f6fa;
   --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
+  --text-muted: #94a3b8;
 
   --border: #1f2937;
   --border-strong: #374151;
@@ -125,7 +125,7 @@
   --terminal-surface: #10151e;
   --terminal-border: #1e2634;
   --terminal-text: #f9fafb;
-  --terminal-muted: #798799;
+  --terminal-muted: #94a3b8;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
@@ -264,7 +264,10 @@ a:hover {
   font-size: 0.92rem;
   font-weight: 600;
   color: var(--text-secondary);
-  padding: 6px 12px;
+  padding: 8px 12px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   border-radius: var(--radius);
   transition: color 0.15s ease, background-color 0.15s ease;
 }
@@ -289,15 +292,17 @@ a:hover {
   background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: var(--text);
   padding: 0;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.08s ease;
 }
 
 .theme-toggle:hover {
@@ -305,9 +310,13 @@ a:hover {
   background: var(--bg-subtle);
 }
 
+.theme-toggle:active {
+  transform: scale(0.96);
+}
+
 .theme-toggle svg {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
   stroke: currentColor;
   stroke-width: 2;
   stroke-linecap: round;
@@ -321,8 +330,9 @@ a:hover {
 [data-theme="dark"] .theme-icon-light { display: none; }
 
 .nav-cta {
-  font-size: 0.88rem !important;
-  padding: 8px 16px !important;
+  font-size: 0.9rem !important;
+  min-height: 44px;
+  padding: 10px 18px !important;
 }
 
 /* ——— Main Layout Container ——— */
@@ -373,7 +383,7 @@ main.narrow {
 .hero-split h1 {
   font-size: clamp(2.2rem, 3.8vw, 3.1rem);
   line-height: 1.14;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.015em;
   margin: 0 0 18px;
   max-width: 20ch;
 }
@@ -419,17 +429,22 @@ main.narrow {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 11px 22px;
+  min-height: 44px;
+  padding: 12px 24px;
   border-radius: var(--radius);
   text-decoration: none;
   font-weight: 600;
-  font-size: 0.96rem;
+  font-size: 0.98rem;
   font-family: inherit;
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.15s ease;
   user-select: none;
   line-height: 1.2;
+}
+
+.btn:active {
+  transform: scale(0.98);
 }
 
 .btn.primary {
@@ -571,19 +586,24 @@ main.narrow {
   background: var(--terminal-tag-bg);
   border: 1px solid var(--terminal-border);
   color: var(--terminal-text);
-  padding: 3px 10px;
+  min-height: 36px;
+  padding: 6px 12px;
   border-radius: var(--radius-sm);
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   font-family: var(--mono);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  transition: background-color 0.15s ease;
+  gap: 6px;
+  transition: background-color 0.15s ease, transform 0.08s ease;
 }
 
 .room-icon-btn:hover {
   background: #253346;
+}
+
+.room-icon-btn:active {
+  transform: scale(0.96);
 }
 
 /* Scenario Selector Segmented Tabs */
@@ -611,18 +631,25 @@ main.narrow {
   background: var(--terminal-surface);
   border: 1px solid var(--terminal-border);
   border-radius: var(--radius-sm);
-  padding: 4px 10px;
+  min-height: 36px;
+  padding: 6px 12px;
   font-family: var(--font);
-  font-size: 0.84rem;
+  font-size: 0.86rem;
   font-weight: 600;
   color: var(--terminal-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.15s ease, transform 0.08s ease;
+  display: inline-flex;
+  align-items: center;
 }
 
 .scenario-pill:hover {
   color: var(--terminal-text);
   border-color: #3b4d66;
+}
+
+.scenario-pill:active {
+  transform: scale(0.96);
 }
 
 .scenario-pill.active {
@@ -884,7 +911,7 @@ main.narrow {
 }
 
 .threat-col {
-  border-top: 2px solid var(--text);
+  border-top: 1px solid var(--border);
   padding-top: 18px;
 }
 
@@ -1013,6 +1040,7 @@ main.narrow {
 
 .compare-table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
@@ -1101,14 +1129,15 @@ main.narrow {
 .preset-buttons {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .preset-btn {
   background: var(--bg-subtle);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 8px 12px;
+  min-height: 44px;
+  padding: 10px 14px;
   font-family: inherit;
   font-size: 0.88rem;
   color: var(--text);
@@ -1117,12 +1146,16 @@ main.narrow {
   align-items: center;
   gap: 10px;
   text-align: left;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.08s ease;
 }
 
 .preset-btn:hover {
   border-color: var(--border-strong);
   background: var(--bg-alt);
+}
+
+.preset-btn:active {
+  transform: scale(0.98);
 }
 
 .preset-tag {
@@ -1318,25 +1351,33 @@ textarea#demo-input:focus {
 .faq-list summary {
   font-weight: 600;
   font-size: 1.05rem;
+  min-height: 44px;
   cursor: pointer;
   color: var(--text);
   list-style: none;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
 }
 
 .faq-list summary::-webkit-details-marker { display: none; }
 
 .faq-list summary::after {
-  content: "+";
-  font-size: 1.25rem;
-  color: var(--text-muted);
-  font-weight: 400;
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: rotate(45deg);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-right: 4px;
+  flex-shrink: 0;
 }
 
 .faq-list details[open] summary::after {
-  content: "−";
+  transform: rotate(-135deg);
 }
 
 .faq-list details p {
@@ -1558,6 +1599,11 @@ footer .wrap {
 footer a {
   color: var(--text-muted);
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 4px 6px;
+  transition: color 0.15s ease;
 }
 
 footer a:hover {

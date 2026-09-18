@@ -20,10 +20,10 @@ import httpx
 from app import core_config as cfg
 
 # Tried in order; first success sticks for the process lifetime.
+# Probed 2026-09-18 on our free key: lite-preview-tts + GA 2.5-tts = NOT FOUND,
+# preview-tts + 3.1-flash-tts-preview = OK. Chain keeps voice alive.
 _MODEL_CHAIN = [
     cfg.TTS_MODEL or "gemini-2.5-flash-preview-tts",
-    "gemini-2.5-flash-lite-preview-tts",
-    "gemini-2.5-flash-tts",
     "gemini-3.1-flash-tts-preview",
 ]
 _WORKING: list[str] = []
