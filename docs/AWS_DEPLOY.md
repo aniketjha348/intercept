@@ -1,79 +1,74 @@
-# INTERCEPT on AWS — infra as code + CI/CD (no click-ops)
-
-Push → built → deployed → verified. Three CloudFormation stacks (in `infra/`),
-three GitHub workflows (in `.github/workflows`). You run the stacks **once**;
-every push after that deploys itself.
+# INTERCEPT on AWS — Terraform + ECS + GitHub Actions (the real pipeline)
 
 ```
-push to main ─┬─ intercept-backend/** ─→ ECR push ─→ App Runner auto-deploy ─→ smoke test ✅/❌
-              ├─ intercept-website/** ─→ S3 sync ─→ CloudFront invalidation
-              └─ intercept-android/** or tag v* ─→ debug APK (+ AAB) ─→ GitHub Release on tags
+push main ─┬─ backend/** ─→ docker build → ECR push → ECS rolling deploy → smoke ✅/❌
+           ├─ website/** ─→ S3 sync (＋ CDN purge when enabled)
+           └─ android/** or tag v* ─→ debug APK (+ AAB) ─→ GitHub Release on tags
 ```
 
-## 0. One-time: AWS CLI + region
+Infra lives in `terraform/backend-app` (VPC → ALB → ECS Fargate → ECR,
+Secrets Manager, OIDC deploy role, CloudWatch logs). The old `infra/*.yml`
+CloudFormation files remain only as fallback.
+
+## 0. Laptop setup (once)
 
 ```powershell
-aws configure  # your IAM user keys (only used from this laptop, never in CI)
-$REGION = "ap-south-1"  # Mumbai — closest to Indian users
+pip install awscli            # or the v2 MSI
+aws configure                 # IAM user keys — local only, never in CI (CI uses OIDC)
+$REGION = "ap-south-1"
 ```
 
-## 1. One-time: deploy the 3 stacks (order matters)
+## 1. Remote state bucket (once)
 
 ```powershell
-# 1/3 — deploy role for GitHub (OIDC, zero long-lived keys)
-aws cloudformation deploy --stack-name intercept-github-oidc --region $REGION `
-  --template-file infra/github-oidc.yml --capabilities CAPABILITY_NAMED_IAM `
-  --parameter-overrides GitHubRepo=aniketjha348/intercept WebsiteBucket=intercept-website
-
-# 2/3 — backend (ECR + App Runner, auto-deploy ON, /health gate)
-aws cloudformation deploy --stack-name intercept-backend --region $REGION `
-  --template-file infra/backend.yml --capabilities CAPABILITY_NAMED_IAM `
-  --parameter-overrides DatabaseUrl="postgresql://..." GoogleApiKey="AIza..."
-
-# 3/3 — website (private S3 + CloudFront HTTPS)
-aws cloudformation deploy --stack-name intercept-website --region us-east-1 `
-  --template-file infra/website.yml `
-  --parameter-overrides BucketName=intercept-website
+aws s3 mb s3://intercept-tfstate-<account-id> --region $REGION
+aws s3api put-bucket-versioning --bucket intercept-tfstate-<account-id> `
+  --versioning-configuration Status=Enabled --region $REGION
 ```
 
-Secrets stay secret: `DatabaseUrl`/`GoogleApiKey` are `NoEcho` parameters — they
-never appear in outputs or logs. (Tip: paste them in the App Runner console
-afterwards instead of shell history.)
+## 2. Deploy (from `terraform/backend-app`)
 
-## 2. One-time: GitHub Secrets (repo → Settings → Secrets → Actions)
+```powershell
+terraform init -backend-config="bucket=intercept-tfstate-<account-id>" `
+  -backend-config="key=backend-app/terraform.tfstate" `
+  -backend-config="region=ap-south-1"
+# First time only, if the ECR repo already exists (CloudFormation era):
+terraform import aws_ecr_repository.app intercept-backend
+# Secrets come from your local .env (masked in output, encrypted in state):
+terraform apply -var "db_url=..." -var "google_key=..."
+terraform output    # → api_url, ecr_uri, deploy_role_arn
+```
 
-Get values from: `aws cloudformation describe-stacks --stack-name <name> --query "Stacks[0].Outputs"`.
+## 3. GitHub Secrets (repo → Settings → Secrets → Actions)
 
-| Secret | From |
+| Secret | Value |
 |---|---|
 | `AWS_REGION` | `ap-south-1` |
-| `AWS_ROLE_ARN` | stack 1/3 → `RoleArn` |
+| `AWS_ROLE_ARN` | `terraform output -raw deploy_role_arn` |
+| `AWS_ACCOUNT_ID` | your 12-digit account id |
 | `ECR_REPO` | `intercept-backend` |
-| `API_URL` | stack 2/3 → `ServiceUrl` (no trailing slash) |
-| `WEBSITE_BUCKET` | stack 3/3 → `BucketName` |
-| `CF_DISTRIBUTION_ID` | stack 3/3 → `DistributionId` |
+| `API_URL` | `terraform output -raw api_url` (no trailing slash) |
+| `WEBSITE_BUCKET` | `intercept-website` |
+| `CF_DISTRIBUTION_ID` | empty until the CDN is enabled |
 
-Backend `APK_URL` env comes from the stack parameter (defaults to the GitHub
-`latest` release download — update it if you rename releases).
-
-## 3. Everyday: just push
+## 4. Everyday
 
 ```powershell
-git push origin main            # backend/website auto-deploy, smoke test gates backend
-git tag v0.3.0; git push origin v0.3.0   # + public GitHub Release with the APK/AAB
+git push origin main                 # deploys itself, smoke-gated
+git tag v0.3.0; git push origin v0.3.0   # + public APK/AAB Release
 ```
 
-- Backend pipeline **fails red** if `$API_URL/health` isn't `ok` within ~10 min
-  (App Runner still rolls; the red build tells you to look).
-- First-ever deploy: smoke job skips itself until `API_URL` is set.
-- ECR keeps the last 10 images (rollback = redeploy any tag in console).
-- Website serves from CloudFront (`CdnDomain` output) — share that URL with users.
+Backend secrets rotate without rebuilds: update the Secrets Manager value →
+push anything (or run the workflow) → fresh tasks pick it up.
 
-## 4. Operate
+## 5. Graduate (later, in order)
 
-- Logs: App Runner console → Logs (no SSH needed).
-- Env change (rotate key, point new DB): App Runner console → Configuration →
-  Environment variables → redeploys automatically. Or re-run stack 2/3 command.
-- Rollback backend: ECR console → pick previous `:sha` image → App Runner deploy.
-- Costs (rough, Mumbai): App Runner ~$7/mo always-on 1vCPU/2GB + ECR pennies +
-  S3/CloudFront nearly free at this scale. Free-tier alternative stays Render.
+1. **HTTPS**: add a domain → ACM cert → `:443` listener + `:80` redirect (ALB swap only).
+2. **Private subnets + NAT** (~$32/mo) instead of public-subnet tasks.
+3. **CloudFront** for the website (`EnableCdn=true` path) + `CF_DISTRIBUTION_ID`.
+4. **App Runner** (`infra/backend.yml`) only if you want zero-VPC simplicity back.
+
+## Costs now (Mumbai, pilot)
+
+Fargate 0.25vCPU/0.5GB 1 task ~$9/mo + ALB ~$17/mo + ECR/S3/logs pennies.
+EC2 pilot (if still up) should be deleted after cutover — two backends = double bill.

@@ -18,17 +18,36 @@ Parameters:
     Type: String
     Default: intercept-website
     Description: "Globally unique S3 bucket name for the static site"
+  EnableCdn:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: "'false' while the account is too new for CloudFront (direct S3 website, pilot only)"
+
+Conditions:
+  UseCdn: !Equals [!Ref EnableCdn, "true"]
+  NoCdn: !Equals [!Ref EnableCdn, "false"]
 
 Resources:
   SiteBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Ref BucketName
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
+      WebsiteConfiguration: !If
+        - NoCdn
+        - IndexDocument: index.html
+          ErrorDocument: index.html
+        - !Ref AWS::NoValue
+      PublicAccessBlockConfiguration: !If
+        - UseCdn
+        - BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+        - BlockPublicAcls: false
+          BlockPublicPolicy: false
+          IgnorePublicAcls: false
+          RestrictPublicBuckets: false
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -38,6 +57,7 @@ Resources:
 
   OriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
+    Condition: UseCdn
     Properties:
       OriginAccessControlConfig:
         Name: !Sub "${BucketName}-oac"
@@ -47,6 +67,7 @@ Resources:
 
   Cdn:
     Type: AWS::CloudFront::Distribution
+    Condition: UseCdn
     Properties:
       DistributionConfig:
         Enabled: true
@@ -80,6 +101,7 @@ Resources:
 
   BucketPolicy:
     Type: AWS::S3::BucketPolicy
+    Condition: UseCdn
     Properties:
       Bucket: !Ref SiteBucket
       PolicyDocument:
@@ -94,13 +116,34 @@ Resources:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Cdn}"
 
+  # Pilot only (NoCdn): public read so users can download the APK straight
+  # from S3. Flip EnableCdn back to true after account verification.
+  StaticPublicPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: NoCdn
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "arn:${AWS::Partition}:s3:::${BucketName}/*"
+
 Outputs:
   BucketName:
     Description: "→ GitHub secret WEBSITE_BUCKET"
     Value: !Ref SiteBucket
+  WebsiteUrl:
+    Condition: NoCdn
+    Description: "Pilot URL — share with users until the CDN is enabled"
+    Value: !GetAtt SiteBucket.WebsiteURL
   DistributionId:
+    Condition: UseCdn
     Description: "→ GitHub secret CF_DISTRIBUTION_ID"
     Value: !Ref Cdn
   CdnDomain:
+    Condition: UseCdn
     Description: "Share this URL with users until a custom domain is added"
     Value: !GetAtt Cdn.DomainName

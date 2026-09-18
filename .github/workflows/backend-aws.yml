@@ -1,4 +1,5 @@
-# Backend → AWS: pushes Docker image to ECR. App Runner auto-deploys it.
+# Backend → AWS (Terraform-canonical: ECR + ECS Fargate + ALB).
+# Push image → force ECS rollout → wait stable → smoke-test the live API.
 name: Backend to AWS
 
 on:
@@ -41,12 +42,31 @@ jobs:
           docker push "$REGISTRY/$ECR_REPO:$GITHUB_SHA"
           docker push "$REGISTRY/$ECR_REPO:latest"
 
-  # App Runner picks up :latest automatically. This gate waits for the rollout
-  # and FAILS the workflow if the live API isn't healthy — red pipeline, no doubt.
+  # ECS rolls :latest (task def pins the tag; force-deploy pulls it fresh).
+  redeploy:
+    needs: push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials (OIDC role, no long-lived keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Roll the service + wait until stable
+        run: |
+          aws ecs update-service --cluster intercept-backend \
+            --service intercept-backend --force-new-deployment --output text
+          aws ecs wait services-stable --cluster intercept-backend \
+            --services intercept-backend
+          echo "ECS stable"
+
+  # This gate waits for the rollout and FAILS the workflow if the live API
+  # isn't healthy — red pipeline, no doubt.
   # Skipped until API_URL is set (first-ever deploy has nothing to check yet).
   smoke:
     if: ${{ secrets.API_URL != '' }}
-    needs: push
+    needs: [push, redeploy]
     runs-on: ubuntu-latest
     steps:
       - name: Wait for rollout + verify live API

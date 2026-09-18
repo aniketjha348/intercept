@@ -37,5 +37,6 @@ jobs:
       - name: Sync to S3
         run: aws s3 sync intercept-website/ "s3://${S3_BUCKET}/" --delete --exclude ".git*"
 
-      - name: Invalidate CloudFront
+      - name: Invalidate CloudFront (skips on S3-direct pilot)
+        if: ${{ env.CF_DISTRIBUTION != '' }}
         run: aws cloudfront create-invalidation --distribution-id "${CF_DISTRIBUTION}" --paths "/*"

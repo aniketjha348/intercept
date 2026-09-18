@@ -1,0 +1,160 @@
+# INTERCEPT infra 2/3 (pilot) — backend on EC2 free-tier + ECR.
+# Use this while the AWS account is too new for App Runner/CloudFront
+# ("needs a subscription" / "account must be verified"). Upgrade path:
+# infra/backend.yml (App Runner) once billing + verification clear.
+#
+# Deploy (ap-south-1):
+#   aws cloudformation deploy --stack-name intercept-backend --region ap-south-1 \
+#     --template-file infra/backend-ec2.yml --capabilities CAPABILITY_NAMED_IAM \
+#     --parameter-overrides DatabaseUrl="postgresql://..." GoogleApiKey="AIza..."
+#
+# CI redeploys over SSM (no SSH keys): push image → SSM pull+restart → smoke test.
+# Output ApiUrl (http://EIP:8000) → GitHub secret API_URL.
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "INTERCEPT backend pilot: ECR + EC2 (docker, SSM-managed, Elastic IP)"
+
+Parameters:
+  EcrRepoName:
+    Type: String
+    Default: intercept-backend
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+    Default: ""
+  GoogleApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+  OpenAiApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+  ApkUrl:
+    Type: String
+    Default: https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk
+  LlmProvider:
+    Type: String
+    Default: auto
+  LlmModel:
+    Type: String
+    Default: gemini-2.5-flash-lite
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    Description: "Free-tier eligible"
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+Resources:
+  EcrRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref EcrRepoName
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules":[{"rulePriority":1,"description":"keep last 10 images",
+          "selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},
+          "action":{"type":"expire"}}]}
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: InterceptBackendInstance
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref InstanceRole]
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: INTERCEPT backend pilot - app port only, no SSH
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          CidrIp: 0.0.0.0/0
+          Description: "FastAPI (TLS terminates later at CDN/ALB; pilot http)"
+
+  Host:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref LatestAmiId
+      IamInstanceProfile: !Ref InstanceProfile
+      SecurityGroupIds: [!Ref SecurityGroup]
+      Tags:
+        - Key: Name
+          Value: intercept-backend
+      UserData:
+        Fn::Base64: !Sub
+          - |
+            #!/bin/bash
+            set -eux
+            dnf install -y docker
+            systemctl enable --now docker
+            cat >/etc/intercept.env <<'EOF'
+            DATABASE_URL=${DatabaseUrl}
+            GOOGLE_API_KEY=${GoogleApiKey}
+            OPENAI_API_KEY=${OpenAiApiKey}
+            APK_URL=${ApkUrl}
+            LLM_PROVIDER=${LlmProvider}
+            LLM_MODEL=${LlmModel}
+            ALLOW_NETWORK_FETCH=false
+            EOF
+            chmod 600 /etc/intercept.env
+            ECR=${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com
+            aws ecr get-login-password --region ${AWS::Region} \
+              | docker login --username AWS --password-stdin $ECR || true
+            # First boot: image may not exist yet (CI pushes it). Retry in background.
+            (
+              for i in $(seq 1 30); do
+                if docker pull $ECR/${EcrRepoName}:latest; then
+                  docker rm -f intercept || true
+                  docker run -d --name intercept --restart unless-stopped \
+                    -p 8000:8000 --env-file /etc/intercept.env $ECR/${EcrRepoName}:latest
+                  break
+                fi
+                sleep 20
+              done
+            ) >/var/log/intercept-first-pull.log 2>&1 &
+          - EcrRepoName: !Ref EcrRepoName
+
+  ElasticIp:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: intercept-backend
+
+  EipAssoc:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt ElasticIp.AllocationId
+      InstanceId: !Ref Host
+
+Outputs:
+  ApiUrl:
+    Description: "Backend base URL → GitHub secret API_URL (no trailing slash)"
+    Value: !Sub "http://${ElasticIp}:8000"
+  EcrUri:
+    Description: "Image repo (CI pushes here)"
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepoName}"
+  InstanceId:
+    Description: "SSM target (CI discovers by tag anyway)"
+    Value: !Ref Host
