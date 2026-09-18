@@ -19,7 +19,25 @@ env:
   ECR_REPO: ${{ secrets.ECR_REPO }}
 
 jobs:
+  # Broken code never reaches ECR: 20+ tests run first, deploy waits for green.
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run backend tests
+        run: |
+          cd intercept-backend
+          pip install -r requirements.txt
+          python -m pytest -q
+
   push:
+    needs: test
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5

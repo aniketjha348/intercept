@@ -1,18 +1,19 @@
-fastapi>=0.110
-uvicorn[standard]>=0.29
-pydantic>=2.6
-python-multipart>=0.0.9
-python-dotenv>=1.0
-httpx>=0.27
-pillow>=10.0
-sqlalchemy>=2.0
-psycopg[binary]>=3.1
+# Pinned: every deploy installs EXACTLY these (unpinned >= once pulled a
+# breaking major mid-release — never again). Bump deliberately + run tests.
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+pydantic==2.13.5
+python-multipart==0.0.32
+python-dotenv==1.0.1
+httpx==0.28.1
+pillow==12.3.0
+sqlalchemy==2.0.52
+psycopg[binary]==3.3.5
 
-# sqlalchemy/psycopg now required (Neon Postgres); langgraph stays optional
-# langgraph>=0.1          # stateful guardian workflow (auto-used if installed)
-# langchain-core>=0.2     # supporting LLM plumbing (optional, not architectural center)
-# openai>=1.30            # LLM provider: OpenAI
-# google-generativeai>=0.5 # LLM provider: Gemini
-# sqlalchemy>=2.0         # postgres persistence (models ready; runtime uses in-memory store for MVP)
-# pytesseract>=0.3        # OCR (falls back to supplied text if missing)
-# pyzbar>=0.1             # QR decode (falls back to supplied qr_text if missing)
+# Optional, keep commented until needed:
+# langgraph          # stateful guardian workflow (auto-used if installed)
+# langchain-core     # supporting LLM plumbing (optional, not architectural center)
+# openai             # LLM provider: OpenAI
+# google-generativeai # LLM provider: Gemini (we use plain HTTPS instead)
+# pytesseract        # OCR (falls back to supplied text if missing)
+# pyzbar             # QR decode (falls back to supplied qr_text if missing)
