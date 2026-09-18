@@ -12,8 +12,8 @@ android {
         applicationId = "com.intercept"
         minSdk = 29
         targetSdk = 34
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
     }
     // Production signing comes from env (CI secrets) — never commit the keystore.
     // Without these vars the release build stays unsigned-debug-signed and still installs.

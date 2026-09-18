@@ -30,5 +30,23 @@
       "इन-ऐप अपडेट: नया वर्ज़न आते ही सूचना",
       "Scam DNA अब दोबारा शुरू करने पर भी याद रहता है"
     ]
+  },
+  {
+    "version_code": 3,
+    "version_name": "0.3.0",
+    "date": "2026-09-18",
+    "force": false,
+    "notes_en": [
+      "Human-like guardian voice (Gemini TTS) with barge-in",
+      "Setup locks until all protections are green",
+      "WhatsApp/Telegram auto-scan — zero paste needed",
+      "New name and icon: Intercept AI"
+    ],
+    "notes_hi": [
+      "Gemini TTS वाली इंसानों जैसी गार्डियन आवाज़",
+      "सारी सुरक्षा ग्रीन हुए बिना सेटअप पूरा नहीं",
+      "WhatsApp/Telegram ऑटो-स्कैन — पेस्ट करने की ज़रूरत नहीं",
+      "नया नाम और आइकन: Intercept AI"
+    ]
   }
 ]
