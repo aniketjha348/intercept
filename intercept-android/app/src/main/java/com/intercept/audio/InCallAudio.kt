@@ -15,6 +15,7 @@ class InCallAudio(context: Context) {
 
     private var prevMode = AudioManager.MODE_NORMAL
     private var prevSpeaker = false
+    private var prevVolume = -1
     private var active = false
 
     fun enter() {
@@ -25,6 +26,13 @@ class InCallAudio(context: Context) {
             prevSpeaker = audio?.isSpeakerphoneOn == true
             audio?.mode = AudioManager.MODE_IN_COMMUNICATION
             audio?.isSpeakerphoneOn = true
+            // Caller must HEAR the guardian: max the voice-call stream
+            // (uplink injection volume follows it on most devices).
+            prevVolume = audio?.getStreamVolume(AudioManager.STREAM_VOICE_CALL) ?: -1
+            val max = audio?.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL) ?: -1
+            if (max > 0) {
+                audio?.setStreamVolume(AudioManager.STREAM_VOICE_CALL, max, 0)
+            }
         } catch (_: Exception) {
         }
     }
@@ -35,7 +43,12 @@ class InCallAudio(context: Context) {
         try {
             audio?.isSpeakerphoneOn = prevSpeaker
             audio?.mode = prevMode
+            if (prevVolume >= 0) {
+                audio?.setStreamVolume(AudioManager.STREAM_VOICE_CALL, prevVolume, 0)
+            }
         } catch (_: Exception) {
+        } finally {
+            prevVolume = -1
         }
     }
 }
