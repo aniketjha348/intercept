@@ -54,20 +54,21 @@ class InterceptInCallService : InCallService() {
             false
         }
         if (!auto) return false
-        Handler(Looper.getMainLooper()).postDelayed({
-            try {
-                if (call.state == Call.STATE_RINGING && calls.contains(call)) {
-                    call.answer(0)
-                    setAudioRoute(CallAudioState.ROUTE_SPEAKER)
-                    try {
-                        applicationContext.appContainer().pendingIncomingCaller = number
-                    } catch (_: Exception) {
-                    }
-                    AutoScreenService.screenCall(applicationContext, number)
+        // Answer immediately - no delay! The previous 1.5s delay caused race conditions
+        // where the system would timeout or user would interact before answer completed.
+        try {
+            if (call.state == Call.STATE_RINGING && calls.contains(call)) {
+                call.answer(0)
+                setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+                try {
+                    applicationContext.appContainer().pendingIncomingCaller = number
+                } catch (_: Exception) {
                 }
-            } catch (_: Exception) {
+                AutoScreenService.screenCall(applicationContext, number)
             }
-        }, 1500)
+        } catch (_: Exception) {
+            return false
+        }
         return true
     }
 

@@ -11,6 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.core.content.ContextCompat
 import com.intercept.presentation.navigation.NavGraph
 import com.intercept.presentation.theme.InterceptTheme
+import com.intercept.service.AutoScreenService
 
 class MainActivity : ComponentActivity() {
 
@@ -18,6 +19,7 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_INCOMING = "extra_incoming"
         const val EXTRA_ANALYZE = "extra_analyze"
         const val EXTRA_WATCH_SID = "extra_watch_sid"
+        const val EXTRA_CALL_NUMBER = "extra_call_number"
     }
 
     private val permissionLauncher =
@@ -31,8 +33,6 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.RECEIVE_SMS,
-            Manifest.permission.CALL_PHONE,
-            Manifest.permission.READ_CALL_LOG,
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             need.add(Manifest.permission.POST_NOTIFICATIONS)
@@ -51,12 +51,30 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestCallPermissions()
-        val startAtIncoming = intent?.getBooleanExtra(EXTRA_INCOMING, false) == true
+
+        // Check if this is an auto-screened call (headless path)
+        val caller = try {
+            AutoScreenService.activeCallNumber ?: intent?.getStringExtra(EXTRA_CALL_NUMBER)
+        } catch (_: Exception) {
+            null
+        }
+
+        // Auto-screened calls start at the live screen directly
+        val startLiveSid = try {
+            AutoScreenService.activeCallSession
+        } catch (_: Exception) {
+            null
+        }
+
+        // Only set startAtIncoming if not already in auto-screening session
+        val startAtIncoming = intent?.getBooleanExtra(EXTRA_INCOMING, false) == true &&
+            startLiveSid == null
+
         val startAtAnalyze = intent?.getBooleanExtra(EXTRA_ANALYZE, false) == true &&
             !startAtIncoming
         // Notification tap during headless screening: jump straight to the transcript.
         val watchSid = intent?.getStringExtra(EXTRA_WATCH_SID)?.takeIf { it.isNotBlank() }
-            ?.takeUnless { startAtIncoming }
+            ?.takeUnless { startAtIncoming } ?: startLiveSid
         // Share-sheet entry: verify the shared link/text immediately.
         val shared = if (intent?.action == android.content.Intent.ACTION_SEND) {
             intent.getStringExtra(android.content.Intent.EXTRA_TEXT)

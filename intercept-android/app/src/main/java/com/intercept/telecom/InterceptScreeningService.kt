@@ -12,17 +12,50 @@ import com.intercept.MainActivity
 import com.intercept.appContainer
 
 /**
- * Channel Gateway on-device (§2): unknown callers are silenced here and the
- * user gets one tap to let the AI answer. Full auto-answer needs the
- * default-dialer role — P2; silencing + one-tap screening is the honest MVP.
+ * Channel Gateway on-device (§2): unknown callers are silenced here when
+ * auto-answer is disabled, and the user gets one tap to let the AI answer.
+ * When auto-answer is enabled + default dialer role held, calls are allowed
+ * through for InterceptInCallService to handle immediately.
+ * Full auto-answer requires both ROLE_CALL_SCREENING and ROLE_DIALER.
  */
 class InterceptScreeningService : CallScreeningService() {
 
     override fun onScreenCall(callDetails: Call.Details) {
         val number = callDetails.handle?.schemeSpecificPart ?: "Unknown"
-        // NOTE: CallResponse has no silence API — silencing happens because the
-        // default-dialer path (InterceptInCallService) owns the call UI. Here we
-        // keep the system notification and add our own full-screen tap-to-screen.
+        val container = try {
+            applicationContext.appContainer()
+        } catch (_: Exception) {
+            // If we can't access container, allow the call through
+            val response = CallResponse.Builder()
+                .setSkipCallLog(false)
+                .setSkipNotification(false)
+                .build()
+            respondToCall(callDetails, response)
+            return
+        }
+
+        // Check if auto-answer is enabled and caller is unknown
+        val shouldAutoAnswer = try {
+            container.setupDone && container.autoCalls &&
+                ContactHelper.isUnknown(applicationContext, number)
+        } catch (_: Exception) {
+            false
+        }
+
+        if (shouldAutoAnswer) {
+            // Allow the call and let InterceptInCallService handle auto-answer
+            // This is the headless auto-answer path
+            val response = CallResponse.Builder()
+                .setSkipCallLog(false)
+                .setSkipNotification(false)
+                .setAllowCall(true)  // Explicitly allow the call through
+                .build()
+            respondToCall(callDetails, response)
+            // InterceptInCallService will detect this call and handle auto-answer
+            return
+        }
+
+        // Non-auto path: silence unknown callers, show notification for user to tap
         val response = CallResponse.Builder()
             .setSkipCallLog(false)
             .setSkipNotification(false)
