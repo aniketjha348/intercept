@@ -118,6 +118,25 @@ main.narrow { max-width: 700px; }
   background: var(--paper); border: 1px solid var(--wire); border-radius: 999px;
   padding: 8px 20px; font-size: 0.95rem; font-weight: 600;
 }
+.fieldlabel { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 8px; }
+textarea#demo-input {
+  width: 100%; font: inherit; padding: 14px 16px; border-radius: 14px;
+  border: 1px solid var(--wire); background: var(--paper); resize: vertical;
+}
+textarea#demo-input:focus { outline: 3px solid var(--link); outline-offset: 2px; border-color: var(--link); }
+.demoresult { margin-top: 18px; }
+.score { border-radius: var(--radius); padding: 22px clamp(18px, 4vw, 32px); background: var(--band); border-left: 6px solid var(--wire); }
+.score.g { border-left-color: var(--leaf); }
+.score.a { border-left-color: #eab308; }
+.score.r { border-left-color: var(--signal); }
+.score .big { font-size: 1.5rem; font-weight: 700; }
+.score ul { padding-left: 20px; margin: 10px 0 6px; }
+.score p { margin: 8px 0 0; }
+.faq details { border-top: 1px solid var(--wire); padding: 16px 0; }
+.faq details:last-child { border-bottom: 1px solid var(--wire); }
+.faq summary { font-weight: 600; font-size: 1.05rem; cursor: pointer; }
+.faq summary:hover { color: var(--link); }
+.faq p { margin: 8px 0 0; color: var(--muted); max-width: 44rem; }
 .closing { text-align: center; padding: 64px 0 16px; }
 .closing h2 { font-size: clamp(1.9rem, 3.6vw, 2.8rem); margin: 0 auto 24px; max-width: 24ch; }
 

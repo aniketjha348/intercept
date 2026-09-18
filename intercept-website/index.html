@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Intercept AI — Scam calls answered before you have to</title>
 <meta name="description" content="Intercept AI screens unknown calls, scans messages, links and QR codes — in Hindi, Hinglish and English — and stops OTP and UPI fraud.">
+<meta property="og:title" content="Intercept AI — Scam calls answered before you have to">
+<meta property="og:description" content="Unknown calls auto-answered and judged. Risky messages flagged. Hindi, Hinglish, English. Free for Android.">
+<meta property="og:type" content="website">
 <link rel="icon" type="image/svg+xml" href="logo.svg">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -69,11 +72,101 @@
     <div class="langs"><span>हिंदी</span><span>Hinglish</span><span>English</span></div>
   </section>
 
+  <section class="band">
+    <div class="section" style="padding:0;border:none">
+      <h2>Try the engine right here</h2>
+      <p class="standfirst">Paste any suspicious message. The live backend scores it — the same engine the app uses.</p>
+      <label class="fieldlabel" for="demo-input">Suspicious message</label>
+      <textarea id="demo-input" rows="3" placeholder="e.g. Main SBI bank se bol raha hoon, turant OTP batao"></textarea>
+      <div class="cta-row" style="margin-top:14px">
+        <button class="btn primary" id="demo-btn" type="button">Check risk</button>
+      </div>
+      <div id="demo-result" class="demoresult" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Asked often</h2>
+    <div class="faq">
+      <details>
+        <summary>Will it answer my mom's calls too?</summary>
+        <p>No. Saved contacts always ring through normally. Only unknown numbers get screened.</p>
+      </details>
+      <details>
+        <summary>Does it read my WhatsApp chats?</summary>
+        <p>No. It can only scan message notifications as they arrive — muted chats stay private, and chats themselves are never opened.</p>
+      </details>
+      <details>
+        <summary>Where do my OTPs go?</summary>
+        <p>Nowhere. They are checked in memory and scrubbed from anything saved. We store attack patterns, never secrets.</p>
+      </details>
+      <details>
+        <summary>Does it work without internet?</summary>
+        <p>The on-device rules keep working, but live screening and reports need the backend. Point the app at a reachable server URL.</p>
+      </details>
+      <details>
+        <summary>Which phones work?</summary>
+        <p>Android 10 and above. Xiaomi, Vivo and Oppo owners should also allow autostart so protection survives the night.</p>
+      </details>
+    </div>
+  </section>
+
   <section class="closing">
     <h2>Free during early access. Your family's OTPs will thank you.</h2>
     <a class="btn primary" href="download.html">Get Intercept AI for Android</a>
   </section>
 </main>
+<script>
+(function () {
+  var input = document.getElementById("demo-input");
+  var btn = document.getElementById("demo-btn");
+  var out = document.getElementById("demo-result");
+  if (!input || !btn || !out) return;
+  var base = (new URLSearchParams(location.search).get("api")) ||
+    window.INTERCEPT_API || "https://YOUR-API-URL";
+  function show(html) { out.innerHTML = html; }
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+  btn.addEventListener("click", function () {
+    var text = input.value.trim();
+    if (!text) {
+      show('<p class="muted">Paste a message first — then press Check risk.</p>');
+      return;
+    }
+    btn.disabled = true;
+    show('<p class="muted">Checking…</p>');
+    fetch(base + "/analyze/text", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text, channel: "SMS", language: "auto" })
+    }).then(function (r) {
+      if (!r.ok) throw new Error("bad status");
+      return r.json();
+    }).then(function (d) {
+      var lvl = String(d.level || "LOW").toUpperCase();
+      var cls = lvl === "CRITICAL" ? "r" : (lvl === "LOW" ? "g" : "a");
+      var why = (d.why || []).slice(0, 3).map(function (w) {
+        return "<li>" + esc(w) + "</li>";
+      }).join("");
+      var simple = d.simple_mode || d.user_message || "";
+      show(
+        '<div class="score ' + cls + '"><span class="big">' + esc(lvl) +
+        " · " + Number(d.risk || 0) + "</span>" +
+        (simple ? "<p>" + esc(simple) + "</p>" : "") +
+        (why ? "<ul>" + why + "</ul>" : "") +
+        '<p class="muted small">Same engine as the app. <a href="download.html">Get it</a> to stay protected on calls too.</p></div>'
+      );
+    }).catch(function () {
+      show('<p class="muted">The demo server did not answer. Check your connection — or skip the demo and <a href="download.html">get the app</a>.</p>');
+    }).finally(function () {
+      btn.disabled = false;
+    });
+  });
+})();
+</script>
 
 <footer>
   <div class="wrap">
