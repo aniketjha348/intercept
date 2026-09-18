@@ -172,5 +172,19 @@
       "Is version me taze fixes aur sudhaar",
       "App kholte hi update mil jayega"
     ]
+  },
+  {
+    "version_code": 12,
+    "version_name": "0.4.5",
+    "date": "2026-09-18",
+    "force": false,
+    "notes_en": [
+      "v0.4.5: demo quarantined to simulate, honest speaker path, proven mic, MIUI overlay guide",
+      "Release v0.4.4: changelog feeds (auto)"
+    ],
+    "notes_hi": [
+      "Is version me taze fixes aur sudhaar",
+      "App kholte hi update mil jayega"
+    ]
   }
 ]
