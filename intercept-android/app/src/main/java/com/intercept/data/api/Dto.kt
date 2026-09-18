@@ -118,6 +118,7 @@ data class ReportResponse(
     val action: String = "",
     val why: List<String> = emptyList(),
     @SerialName("likely_objective") val likelyObjective: String = "",
+    val summary: String = "",
     val turns: Int = 0,
     val transcript: List<TranscriptLineDto> = emptyList(),
 )

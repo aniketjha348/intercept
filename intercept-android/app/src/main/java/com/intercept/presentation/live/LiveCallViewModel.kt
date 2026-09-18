@@ -9,6 +9,7 @@ import com.intercept.data.api.CallWebSocket
 import com.intercept.di.AppContainer
 import com.intercept.service.AutoScreenService
 import com.intercept.speech.CallerStt
+import com.intercept.speech.LiveVoice
 import com.intercept.telecom.InterceptInCallService
 import com.intercept.domain.model.ChatLine
 import com.intercept.domain.model.RiskLevel
@@ -38,6 +39,7 @@ data class LiveUiState(
     val humanMode: Boolean = false,
     val realCall: Boolean = false,
     val listening: Boolean = false,
+    val voiceLive: Boolean = false,
     val interim: String = "",
     val ended: Boolean = false,
     val endedReason: String = "",
@@ -58,6 +60,7 @@ class LiveCallViewModel(
     private var useSocket = true
     private var demoJob: Job? = null
     private var stt: CallerStt? = null
+    private var live: LiveVoice? = null
     /** Headless service is driving this session (talking + listening) — UI only watches. */
     private val driven: Boolean = AutoScreenService.activeCallSession == sessionId
 
@@ -227,6 +230,66 @@ class LiveCallViewModel(
         }
     }
 
+    /**
+     * Realtime voice path (beta): mic streams to the Live bridge, guardian
+     * voice streams back natively. Any failure falls back to STT+TTS turns.
+     */
+    fun startLiveVoice() {
+        if (_state.value.voiceLive || _state.value.ended) return
+        stopListening()
+        val voice = try {
+            LiveVoice(container.appContextForVoice(), container.backendUrl, sessionId)
+        } catch (_: Exception) {
+            null
+        } ?: run {
+            _state.update { it.copy(error = "Live voice unavailable — typed/mic turns still work.") }
+            return
+        }
+        voice.onTranscript = { speaker, text ->
+            if (text.isNotBlank()) {
+                _state.update { it.copy(transcript = it.transcript + ChatLine(speaker, text)) }
+            }
+        }
+        voice.onRisk = { score, level ->
+            _state.update { it.copy(risk = score, level = RiskLevel.of(level)) }
+        }
+        voice.onTerminated = { reason ->
+            _state.update {
+                it.copy(ended = true, endedReason = reason.ifEmpty { it.endedReason })
+            }
+            stopRealCallAudio()
+        }
+        voice.onError = {
+            live = null
+            _state.update {
+                it.copy(voiceLive = false, error = "Live voice dropped — mic/typed turns still work.")
+            }
+        }
+        live = voice
+        val ok = try {
+            voice.start(container.http)
+        } catch (_: Exception) {
+            false
+        }
+        if (!ok) {
+            live = null
+            _state.update { it.copy(error = "Live voice unavailable — mic/typed turns still work.") }
+            return
+        }
+        _state.update { it.copy(voiceLive = true, listening = true, error = null) }
+    }
+
+    fun stopLiveVoice() {
+        try {
+            live?.stop()
+        } catch (_: Exception) {
+        }
+        live = null
+        if (_state.value.voiceLive || _state.value.listening) {
+            _state.update { it.copy(voiceLive = false, listening = false) }
+        }
+    }
+
     /** Hang up the telecom call + restore audio (backend session ends separately). */
     private fun stopRealCallAudio() {
         try {
@@ -259,6 +322,7 @@ class LiveCallViewModel(
     }
 
     fun endCall() = viewModelScope.launch {
+        stopLiveVoice()
         stopRealCallAudio()
         try {
             container.repo.endCall(sessionId)
@@ -269,6 +333,7 @@ class LiveCallViewModel(
     }
 
     override fun onCleared() {
+        stopLiveVoice()
         stopRealCallAudio()
         socket?.close()
         super.onCleared()

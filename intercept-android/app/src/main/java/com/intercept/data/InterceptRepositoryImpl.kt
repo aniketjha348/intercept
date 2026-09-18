@@ -94,7 +94,7 @@ class InterceptRepositoryImpl(
     private fun com.intercept.data.api.ReportResponse.toDomain() = SecurityReport(
         caller = caller, risk = risk, level = level, claimedOrg = claimedOrg,
         tactics = tactics, protected = protected, action = action, why = why,
-        objective = likelyObjective, turns = turns,
+        objective = likelyObjective, summary = summary, turns = turns,
         transcript = transcript.map { ChatLine(it.speaker, it.text) },
     )
 }

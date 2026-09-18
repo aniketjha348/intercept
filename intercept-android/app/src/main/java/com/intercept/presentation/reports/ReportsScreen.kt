@@ -173,6 +173,15 @@ fun ReportsScreen(nav: NavController, container: AppContainer) {
                         }
                     }
 
+                    if (r.summary.isNotBlank()) {
+                        item {
+                            Spacer(Modifier.height(26.dp))
+                            SectionLabel("In plain words")
+                            Spacer(Modifier.height(6.dp))
+                            Text(r.summary, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+
                     item {
                         Spacer(Modifier.height(26.dp))
                         SectionLabel("The call")

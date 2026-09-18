@@ -6,6 +6,7 @@ pydantic==2.13.5
 python-multipart==0.0.32
 python-dotenv==1.0.1
 httpx==0.28.1
+websockets==17.1
 pillow==12.3.0
 sqlalchemy==2.0.52
 psycopg[binary]==3.3.5

@@ -62,6 +62,7 @@ data class SecurityReport(
     val action: String,
     val why: List<String>,
     val objective: String,
+    val summary: String,
     val turns: Int,
     val transcript: List<ChatLine>,
 )

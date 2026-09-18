@@ -9,7 +9,7 @@ from app import core_config as cfg
 from app.ai import llm
 from app.api import analyze, appcast, calls, users
 from app.guards import guard
-from app.realtime import websocket
+from app.realtime import live_bridge, websocket
 
 app = FastAPI(title="INTERCEPT", version="0.1.0",
               description="AI Social Engineering Firewall — unified Security Intelligence Pipeline")
@@ -24,6 +24,7 @@ app.include_router(analyze.router)
 app.include_router(appcast.router)
 app.include_router(users.router)
 app.include_router(websocket.router)
+app.include_router(live_bridge.router)
 
 
 @app.get("/health")

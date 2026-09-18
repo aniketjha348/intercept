@@ -24,6 +24,9 @@ LLM_MODEL = _env("LLM_MODEL")
 TTS_MODEL = _env("TTS_MODEL")
 TTS_VOICE_HI = _env("TTS_VOICE_HI")
 TTS_VOICE_EN = _env("TTS_VOICE_EN")
+# Realtime voice bridge model (probed: gemini-3.1-flash-live-preview).
+LIVE_MODEL = _env("LIVE_MODEL")
+GEMINI_LIVE_URL = _env("GEMINI_LIVE_URL")
 ALLOW_NETWORK_FETCH = _env("ALLOW_NETWORK_FETCH", "false").lower() in ("1", "true", "yes")
 DATABASE_URL = _env("DATABASE_URL", "sqlite:///./intercept.db")
 APP_NAME = "INTERCEPT"

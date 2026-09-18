@@ -73,6 +73,7 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
     var lang by remember { mutableStateOf(container.language) }
     var autoCalls by remember { mutableStateOf(container.autoCalls) }
     var autoSms by remember { mutableStateOf(container.autoSms) }
+    var liveVoice by remember { mutableStateOf(container.liveVoice) }
     var autoApps by remember { mutableStateOf(container.autoApps) }
     var status by remember { mutableStateOf<StatusMsg?>(null) }
 
@@ -171,6 +172,11 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
                 subtitle = "Speak AI replies aloud.",
                 checked = tts,
             ) { tts = it; container.ttsEnabled = it }
+            SwitchRow(
+                title = "Real-time voice (beta)",
+                subtitle = "Talk live instead of turn-by-turn. Needs good network.",
+                checked = liveVoice,
+            ) { liveVoice = it; container.liveVoice = it }
 
             Spacer(Modifier.height(28.dp))
             SectionLabel("Auto-protect")

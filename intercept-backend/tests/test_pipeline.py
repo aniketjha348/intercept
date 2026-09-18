@@ -82,6 +82,46 @@ def test_speak_graceful_without_key(monkeypatch):
     assert c.post("/calls/NOPE/speak", json={}).status_code == 404
 
 
+def test_live_bridge_builders():
+    from app.realtime import live_bridge as lb
+    s = lb.build_setup()
+    assert "gemini" in s["setup"]["model"]
+    assert s["setup"]["generationConfig"]["responseModalities"] == ["AUDIO"]
+    assert lb.build_audio_chunk("AAA")["realtimeInput"]["audio"]["data"] == "AAA"
+    evs = lb.parse_server_msg({"serverContent": {
+        "modelTurn": {"parts": [{"inlineData": {"data": "XYZ"}}]},
+        "inputTranscription": {"text": "hello"},
+        "outputTranscription": {"text": "hi"},
+        "turnComplete": True}})
+    assert {"audio", "input_text", "output_text", "turn_complete"} <= {k for k, _ in evs}
+    assert lb.parse_server_msg({}) == []
+
+
+def test_live_bridge_no_key_closes(monkeypatch):
+    import app.core_config as cfg
+    monkeypatch.setattr(cfg, "GOOGLE_API_KEY", "")
+    from fastapi.testclient import TestClient
+    from starlette.websockets import WebSocketDisconnect
+    from app.main import app
+    import pytest
+    c = TestClient(app)
+    sid = c.post("/calls/start", json={"caller": "live-test"}).json()["session_id"]
+    with pytest.raises(WebSocketDisconnect):
+        with c.websocket_connect(f"/ws/live/{sid}") as ws:
+            ws.receive_json()
+
+
+def test_report_has_summary():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    c = TestClient(app)
+    sid = c.post("/calls/start", json={"caller": "sum-test"}).json()["session_id"]
+    c.post(f"/calls/{sid}/transcript",
+           json={"text": "SBI KYC, share OTP now", "speaker": "caller"})
+    rep = c.post(f"/calls/{sid}/end", json={}).json()["report"]
+    assert isinstance(rep.get("summary"), str) and len(rep["summary"]) > 10
+
+
 def test_speak_cached_wav(monkeypatch):
     import base64 as _b64
     import app.ai.voice as v

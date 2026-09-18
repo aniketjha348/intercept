@@ -98,9 +98,21 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
 
     val micLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted -> if (granted) vm.startListening() }
+    ) { granted ->
+        if (granted) {
+            if (container.liveVoice) vm.startLiveVoice() else vm.startListening()
+        }
+    }
 
     fun ensureMicThenListen() {
+        if (container.liveVoice) {
+            if (s.voiceLive) vm.stopLiveVoice() else {
+                val ok = ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) ==
+                    PackageManager.PERMISSION_GRANTED
+                if (ok) vm.startLiveVoice() else micLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+            return
+        }
         if (s.listening) {
             vm.stopListening()
             return
@@ -150,7 +162,9 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
                 if (s.realCall) {
                     StatusLine("Real call on speaker — AI is screening live", RoomMuted)
                 }
-                if (s.listening) {
+                if (s.voiceLive) {
+                    StatusLine("Live voice — talking in real time", RiskCriticalOnRoom)
+                } else if (s.listening) {
                     StatusLine(
                         "Listening…" + if (s.interim.isNotEmpty()) " “${s.interim}”" else "",
                         RiskLowOnRoom,

@@ -167,6 +167,13 @@ class AppContainer(context: Context) {
     /** Fresh speech recognizer per screening session (don't reuse across calls). */
     fun callerStt(): CallerStt = CallerStt(appContext) { language }
 
+    /** Realtime voice (beta) on/off. Off = proven STT+TTS turn path. */
+    var liveVoice: Boolean
+        get() = prefs.getBoolean("live_voice", false)
+        set(v) = prefs.edit().putBoolean("live_voice", v).apply()
+
+    fun appContextForVoice(): android.content.Context = appContext
+
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
 
     lateinit var http: OkHttpClient
