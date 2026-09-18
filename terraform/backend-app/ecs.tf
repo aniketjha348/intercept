@@ -29,7 +29,9 @@ resource "aws_ecs_task_definition" "app" {
       { name = "LLM_MODEL", value = var.llm_model },
       { name = "ALLOW_NETWORK_FETCH", value = "false" },
       { name = "WHATSAPP_PHONE_ID", value = var.whatsapp_phone_id },
-      { name = "WHATSAPP_VERIFY", value = var.whatsapp_verify }
+      { name = "WHATSAPP_VERIFY", value = var.whatsapp_verify },
+      { name = "LIVEKIT_URL", value = var.livekit_url },
+      { name = "LIVEKIT_KEY", value = var.livekit_key }
     ]
     secrets = local.app_secrets
     logConfiguration = {

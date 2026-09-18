@@ -48,6 +48,23 @@ variable "desired_count" {
   default = 1
 }
 
+variable "livekit_url" {
+  type    = string
+  default = ""
+  description = "LiveKit Cloud WS URL (empty = voice demo off)"
+}
+
+variable "livekit_key" {
+  type    = string
+  default = ""
+}
+
+variable "livekit_secret" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
 variable "whatsapp_token" {
   type      = string
   sensitive = true

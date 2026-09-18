@@ -44,6 +44,17 @@ resource "aws_secretsmanager_secret_version" "whatsapp_token" {
   secret_string = var.whatsapp_token
 }
 
+resource "aws_secretsmanager_secret" "livekit_secret" {
+  name                    = "${var.project}/LIVEKIT_SECRET"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "livekit_secret" {
+  count         = var.livekit_secret != "" ? 1 : 0
+  secret_id     = aws_secretsmanager_secret.livekit_secret.id
+  secret_string = var.livekit_secret
+}
+
 locals {
   # Secrets exist as versions only when set — ECS can only inject those.
   app_secrets = concat(
@@ -51,5 +62,6 @@ locals {
     var.google_key != "" ? [{ name = "GOOGLE_API_KEY", valueFrom = aws_secretsmanager_secret.google_key.arn }] : [],
     var.openai_key != "" ? [{ name = "OPENAI_API_KEY", valueFrom = aws_secretsmanager_secret.openai_key.arn }] : [],
     var.whatsapp_token != "" ? [{ name = "WHATSAPP_TOKEN", valueFrom = aws_secretsmanager_secret.whatsapp_token.arn }] : [],
+    var.livekit_secret != "" ? [{ name = "LIVEKIT_SECRET", valueFrom = aws_secretsmanager_secret.livekit_secret.arn }] : [],
   )
 }
