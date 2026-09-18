@@ -321,5 +321,24 @@
       "Live feed — abhi chal rahi calls dekho",
       "Watch mode — forwarded calls ka transcript dekho"
     ]
+  },
+  {
+    "version_code": 23,
+    "version_name": "0.7.0",
+    "date": "2026-09-18",
+    "force": false,
+    "apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk",
+    "notes_en": [
+      "v0.7.0: release — carrier forwarding, cloud AI answering, human-grade Gemini voice",
+      "agent: make the voice sound like a person, not a phone tree",
+      "fix: app joins the SIP room, and the owner stops hearing their own screening",
+      "assistant: one forwarding DID per owner",
+      "screening: decline unknown calls when forwarding is armed",
+      "website: update to v0.6.3 — latest download link, notes, and version tags"
+    ],
+    "notes_hi": [
+      "Is version me taze fixes aur sudhaar",
+      "App kholte hi update mil jayega"
+    ]
   }
 ]
