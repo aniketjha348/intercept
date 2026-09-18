@@ -128,7 +128,7 @@ fun HomeScreen(nav: NavController, container: AppContainer) {
                     Column(Modifier.padding(14.dp)) {
                         Text("🛡 Auto-protect is OFF", style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "2-minute setup → unknown calls auto-answered + AI-screened, stranger SMS auto-scanned.",
+                            "Setup stays locked until all 6 checks pass — finish them once, then forget about it. (${container.setupProgress}/6 ready)",
                             style = MaterialTheme.typography.bodySmall
                         )
                         Spacer(Modifier.height(8.dp))

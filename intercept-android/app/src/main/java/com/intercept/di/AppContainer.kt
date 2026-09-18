@@ -52,6 +52,16 @@ class AppContainer(context: Context) {
         get() = prefs.getBoolean("setup_done", false)
         set(v) = prefs.edit().putBoolean("setup_done", v).apply()
 
+    /** How many setup gates are green (shown on Home until setup completes). */
+    var setupProgress: Int
+        get() = prefs.getInt("setup_progress", 0)
+        set(v) = prefs.edit().putInt("setup_progress", v).apply()
+
+    /** True once we asked runtime permissions at least once (drives Settings fallback). */
+    var permAsked: Boolean
+        get() = prefs.getBoolean("perm_asked", false)
+        set(v) = prefs.edit().putBoolean("perm_asked", v).apply()
+
     /** Auto-answer unknown calls and let the AI screen them (needs dialer role). */
     var autoCalls: Boolean
         get() = prefs.getBoolean("auto_calls", false)

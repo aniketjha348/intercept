@@ -9,7 +9,6 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings as SysSettings
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.core.app.NotificationManagerCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -30,18 +30,26 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.intercept.di.AppContainer
 import com.intercept.presentation.navigation.Routes
+import kotlinx.coroutines.launch
 
 private val NEEDED = listOf(
     Manifest.permission.RECORD_AUDIO,
@@ -51,50 +59,105 @@ private val NEEDED = listOf(
     Manifest.permission.RECEIVE_SMS,
 )
 
+private enum class Gate { READY, TODO, NA }
+
 /**
- * One-time auto-protect setup. Android forces these consent taps (no app can
- * take call/SMS/mic roles silently) — after this screen, everything runs
- * with zero taps: unknown calls auto-answered + AI-screened, stranger SMS
- * auto-scanned. Saved contacts always ring through normally.
+ * Hard-gated setup: Done stays locked until every gate is green (or proven
+ * impossible on this device, which auto-skips). No half-protected users.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SetupScreen(nav: NavController, container: AppContainer) {
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
     var tick by remember { mutableStateOf(0) }
     var autoCalls by remember { mutableStateOf(container.autoCalls) }
     var autoSms by remember { mutableStateOf(container.autoSms) }
     var autoApps by remember { mutableStateOf(container.autoApps) }
+    var backend by remember { mutableStateOf<Gate?>(null) }
+    var testingBackend by remember { mutableStateOf(false) }
 
     @Suppress("UNUSED_VARIABLE")
-    val refresh = tick // re-check permissions/roles after every grant
+    val refresh = tick // re-evaluate every gate after each grant
 
-    fun hasPerms(): Boolean {
+    // System screens (role grants, app settings) don't call us back — re-check on return.
+    DisposableEffect(lifecycle) {
+        val obs = LifecycleEventObserver { _, e ->
+            if (e == Lifecycle.Event.ON_RESUME) tick++
+        }
+        lifecycle.addObserver(obs)
+        onDispose { lifecycle.removeObserver(obs) }
+    }
+
+    fun neededPerms(): List<String> {
         val list = NEEDED.toMutableList()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             list.add(Manifest.permission.POST_NOTIFICATIONS)
         }
-        return list.all {
-            ContextCompat.checkSelfPermission(ctx, it) == PackageManager.PERMISSION_GRANTED
+        return list
+    }
+
+    fun permsGate(): Gate =
+        if (neededPerms().all {
+                ContextCompat.checkSelfPermission(ctx, it) == PackageManager.PERMISSION_GRANTED
+            }
+        ) Gate.READY else Gate.TODO
+
+    fun roleGate(role: String): Gate {
+        return try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                Gate.NA
+            } else {
+                val rm = ctx.getSystemService(RoleManager::class.java) ?: return Gate.NA
+                if (!rm.isRoleAvailable(role)) Gate.NA
+                else if (rm.isRoleHeld(role)) Gate.READY else Gate.TODO
+            }
+        } catch (_: Exception) {
+            Gate.NA
         }
     }
 
-    fun roleHeld(role: String): Boolean {
+    fun batteryGate(): Gate {
         return try {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-                false
-            } else {
-                val rm = ctx.getSystemService(RoleManager::class.java) ?: return false
-                rm.isRoleHeld(role)
-            }
+            val pm = ctx.getSystemService(PowerManager::class.java) ?: return Gate.NA
+            if (pm.isIgnoringBatteryOptimizations(ctx.packageName)) Gate.READY else Gate.TODO
         } catch (_: Exception) {
-            false
+            Gate.NA
         }
     }
+
+    fun notifGate(): Gate {
+        return try {
+            if (NotificationManagerCompat.getEnabledListenerPackages(ctx).contains(ctx.packageName)) Gate.READY
+            else Gate.TODO
+        } catch (_: Exception) {
+            Gate.NA
+        }
+    }
+
+    fun testBackend() {
+        testingBackend = true
+        scope.launch {
+            val ok = try {
+                container.repo.checkHealth()
+            } catch (_: Exception) {
+                false
+            }
+            backend = if (ok) Gate.READY else Gate.TODO
+            testingBackend = false
+            tick++
+        }
+    }
+
+    LaunchedEffect(Unit) { testBackend() }
 
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { tick++ }
+    ) {
+        container.permAsked = true
+        tick++
+    }
 
     val roleLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -111,27 +174,29 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
         }
     }
 
-    fun batteryOk(): Boolean {
-        return try {
-            val pm = ctx.getSystemService(PowerManager::class.java)
-                ?: return false
-            pm.isIgnoringBatteryOptimizations(ctx.packageName)
+    fun openAppSettings() {
+        try {
+            ctx.startActivity(
+                Intent(
+                    SysSettings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:${ctx.packageName}")
+                )
+            )
         } catch (_: Exception) {
-            false
         }
     }
 
-    fun notifOk(): Boolean = try {
-        NotificationManagerCompat.getEnabledListenerPackages(ctx).contains(ctx.packageName)
-    } catch (_: Exception) {
-        false
-    }
-
-    val permsOk = hasPerms()
-    val screeningOk = roleHeld(RoleManager.ROLE_CALL_SCREENING)
-    val dialerOk = roleHeld(RoleManager.ROLE_DIALER)
-    val battOk = batteryOk()
-    val ready = permsOk && screeningOk && dialerOk
+    val gates = listOf(
+        "Backend reachable" to (backend ?: Gate.TODO),
+        "Permissions (mic, phone, SMS, contacts)" to permsGate(),
+        "Call-screening role" to roleGate(RoleManager.ROLE_CALL_SCREENING),
+        "Default Phone app" to roleGate(RoleManager.ROLE_DIALER),
+        "Battery unrestricted" to batteryGate(),
+        "Notification access" to notifGate(),
+    )
+    val readyCount = gates.count { it.second != Gate.TODO }
+    val allReady = gates.all { it.second != Gate.TODO }
+    LaunchedEffect(readyCount) { container.setupProgress = readyCount }
 
     Scaffold(topBar = { TopAppBar(title = { Text("Turn on auto-protect") }) }) { pad ->
         Column(
@@ -139,38 +204,53 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "One setup, then INTERCEPT works on its own — no taps per call or message.",
+                "Protection starts only when everything below is green — $readyCount of ${gates.size} ready.",
                 style = MaterialTheme.typography.bodyMedium
             )
-            StatusRow("1. Permissions (mic, phone, SMS, contacts)", permsOk)
-            if (!permsOk) {
+            Text(
+                "One setup, then INTERCEPT works on its own — no taps per call or message.",
+                style = MaterialTheme.typography.bodySmall, color = Color.Gray
+            )
+
+            GateRow("Backend reachable", gates[0].second, "The app is useless without its brain. Fix the URL in Settings if this fails.") {
                 OutlinedButton(
-                    onClick = {
-                        val list = NEEDED.toMutableList()
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            list.add(Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                        permLauncher.launch(list.toTypedArray())
-                    },
+                    onClick = { testBackend() },
+                    enabled = !testingBackend,
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("Allow permissions") }
+                ) {
+                    if (testingBackend) CircularProgressIndicator() else Text("Test ${container.backendUrl}")
+                }
             }
-            StatusRow("2. Call-screening role (silence strangers)", screeningOk)
-            if (!screeningOk) {
+
+            GateRow("Permissions (mic, phone, SMS, contacts)", gates[1].second, "Mic hears callers, phone answers, SMS/Contacts know strangers.") {
+                if (!container.permAsked) {
+                    OutlinedButton(
+                        onClick = { permLauncher.launch(neededPerms().toTypedArray()) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Allow permissions") }
+                } else {
+                    OutlinedButton(
+                        onClick = { openAppSettings() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Open app settings (enable all permissions)") }
+                }
+            }
+
+            GateRow("Call-screening role", gates[2].second, "Lets INTERCEPT silence unknown callers.") {
                 OutlinedButton(
                     onClick = { requestRole(RoleManager.ROLE_CALL_SCREENING) },
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Enable screening") }
             }
-            StatusRow("3. Default Phone app (auto-answer strangers)", dialerOk)
-            if (!dialerOk) {
+
+            GateRow("Default Phone app", gates[3].second, "Lets INTERCEPT auto-answer strangers.") {
                 OutlinedButton(
                     onClick = { requestRole(RoleManager.ROLE_DIALER) },
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Set as Phone app") }
             }
-            StatusRow("4. Battery unrestricted (recommended)", battOk)
-            if (!battOk) {
+
+            GateRow("Battery unrestricted", gates[4].second, "Otherwise Xiaomi/Vivo/Oppo kill protection overnight. Also enable Autostart + lock in Recents.") {
                 OutlinedButton(
                     onClick = {
                         try {
@@ -188,19 +268,12 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Allow background running") }
             }
-            Text(
-                "Xiaomi / Vivo / Oppo / Realme: also enable Autostart for INTERCEPT and lock " +
-                    "it in Recent apps — otherwise the phone kills auto-protect overnight.",
-                style = MaterialTheme.typography.bodySmall, color = Color.Gray
-            )
-            StatusRow("5. Notification access (scan WhatsApp/Telegram)", notifOk())
-            if (!notifOk()) {
+
+            GateRow("Notification access", gates[5].second, "Lets INTERCEPT scan WhatsApp/Telegram messages with zero paste.") {
                 OutlinedButton(
                     onClick = {
                         try {
-                            ctx.startActivity(
-                                Intent(SysSettings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                            )
+                            ctx.startActivity(Intent(SysSettings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                         } catch (_: Exception) {
                         } finally {
                             tick++
@@ -209,6 +282,7 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Allow notification access") }
             }
+
             Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -232,10 +306,6 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                             onCheckedChange = { autoApps = it; container.autoApps = it; tick++ }
                         )
                     }
-                    Text(
-                        "Saved contacts always ring through. Warnings appear as notifications.",
-                        style = MaterialTheme.typography.bodySmall, color = Color.Gray
-                    )
                 }
             }
             Spacer(Modifier.height(4.dp))
@@ -244,18 +314,22 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                     container.setupDone = true
                     nav.navigate(Routes.HOME) { popUpTo(Routes.SETUP) { inclusive = true } }
                 },
-                enabled = ready,
+                enabled = allReady,
                 modifier = Modifier.fillMaxWidth()
-            ) { Text(if (ready) "Done — protect me automatically" else "Finish steps 1–3 first") }
+            ) { Text(if (allReady) "Done — protect me automatically" else "Finish all green steps first ($readyCount/${gates.size})") }
         }
     }
 }
 
 @Composable
-private fun StatusRow(label: String, ok: Boolean) {
-    Text(
-        (if (ok) "✅ " else "○ ") + label,
-        style = MaterialTheme.typography.bodyMedium,
-        color = if (ok) Color(0xFF2E7D32) else Color.Unspecified
-    )
+private fun GateRow(label: String, gate: Gate, hint: String, action: @Composable () -> Unit) {
+    val (mark, color) = when (gate) {
+        Gate.READY -> "✅ " to Color(0xFF2E7D32)
+        Gate.TODO -> "○ " to Color.Unspecified
+        Gate.NA -> "– " to Color.Gray
+    }
+    Text(mark + label + if (gate == Gate.NA) " (not on this device — skipped)" else "", color = color)
+    Text(hint, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+    if (gate == Gate.TODO) action()
 }
+
