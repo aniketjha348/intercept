@@ -13,6 +13,9 @@ async function getJSON(url) {
 
 async function loadFeed() {
   try {
+    if (API_BASE.includes("YOUR-API-URL")) {
+      throw new Error("Local fallback mode");
+    }
     const [latest, all] = await Promise.all([
       getJSON(API_BASE + "/app/latest"),
       getJSON(API_BASE + "/app/updates"),
@@ -24,9 +27,13 @@ async function loadFeed() {
     const latest = items[items.length - 1] || {};
     return {
       latest: {
-        version_code: latest.version_code, version_name: latest.version_name,
-        apk_url: latest.apk_url || "#", force: !!latest.force,
-        updated_at: latest.date || "", notes_en: latest.notes_en || [], notes_hi: latest.notes_hi || [],
+        version_code: latest.version_code,
+        version_name: latest.version_name,
+        apk_url: latest.apk_url || "#",
+        force: !!latest.force,
+        updated_at: latest.date || "",
+        notes_en: latest.notes_en || [],
+        notes_hi: latest.notes_hi || [],
       },
       updates: items,
     };
@@ -34,10 +41,24 @@ async function loadFeed() {
 }
 
 function esc(s) {
-  return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  return String(s).replace(/[&<>"]/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+  }[c]));
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  // Highlight active nav link based on current path
+  const currentPath = window.location.pathname.split("/").pop() || "index.html";
+  document.querySelectorAll(".nav nav a").forEach((a) => {
+    const href = a.getAttribute("href");
+    if (href === currentPath || (currentPath === "" && href === "index.html")) {
+      a.classList.add("active");
+    }
+  });
+
   const feed = await loadFeed().catch(() => null);
   if (!feed) return;
 
@@ -46,37 +67,72 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (v) {
     const L = feed.latest;
     v.innerHTML = "INTERCEPT " + esc(L.version_name || "");
-    document.getElementById("dl-date").textContent = "Updated " + (L.updated_at || "");
-    document.getElementById("dl-notes").innerHTML =
-      (L.notes_en || []).map((n) => "<li>" + esc(n) + "</li>").join("");
+    const dateEl = document.getElementById("dl-date");
+    if (dateEl) {
+      dateEl.textContent = "Released " + (L.updated_at || "recently");
+    }
+    const notesEl = document.getElementById("dl-notes");
+    if (notesEl) {
+      notesEl.innerHTML = (L.notes_en || [])
+        .map((n) => "<li>" + esc(n) + "</li>")
+        .join("");
+    }
     const btn = document.getElementById("dl-btn");
-    btn.href = L.apk_url || "#";
+    if (btn) {
+      btn.href = L.apk_url || "#";
+    }
+
     // QR to the APK (no backend dependency)
     const qr = document.getElementById("dl-qr");
     if (qr && L.apk_url && L.apk_url !== "#") {
+      qr.innerHTML = "";
       const img = document.createElement("img");
-      img.width = 180; img.height = 180; img.alt = "Download QR";
-      img.src = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(L.apk_url);
+      img.width = 170;
+      img.height = 170;
+      img.alt = "Download QR";
+      img.src =
+        "https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=" +
+        encodeURIComponent(L.apk_url);
       qr.appendChild(img);
     }
+
     // older versions
     const olds = feed.updates.slice(0, -1).reverse();
-    document.getElementById("old-versions").innerHTML = olds.length
-      ? olds.map((u) => "<p><strong>" + esc(u.version_name) + "</strong> — " + esc(u.date || "") + "</p>").join("")
-      : "<p>Only one release so far.</p>";
+    const oldContainer = document.getElementById("old-versions");
+    if (oldContainer) {
+      oldContainer.innerHTML = olds.length
+        ? olds
+            .map(
+              (u) =>
+                "<div style='display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--wire);'>" +
+                "<span><strong>v" + esc(u.version_name) + "</strong></span>" +
+                "<span class='muted small' style='font-family:var(--mono);'>" + esc(u.date || "") + "</span>" +
+                "</div>"
+            )
+            .join("")
+        : "<p class='muted'>Only one release so far.</p>";
+    }
   }
 
   // updates.html — changelog timeline
   const cl = document.getElementById("changelog");
   if (cl) {
-    cl.innerHTML = feed.updates.slice().reverse().map((u) =>
-      '<div class="rel"><h3>' + esc(u.version_name) +
-      (u.force ? '<span class="badge">REQUIRED</span>' : "") +
-      '</h3><p class="muted small">' + esc(u.date || "") + "</p><ul>" +
-      (u.notes_en || []).map((n) => "<li>" + esc(n) + "</li>").join("") +
-      "</ul><ul class='notes-hi'>" +
-      (u.notes_hi || []).map((n) => "<li>" + esc(n) + "</li>").join("") +
-      "</ul></div>"
-    ).join("");
+    cl.innerHTML = feed.updates
+      .slice()
+      .reverse()
+      .map(
+        (u) =>
+          '<div class="rel"><h3>' +
+          esc(u.version_name) +
+          (u.force ? '<span class="badge">REQUIRED</span>' : "") +
+          '</h3><p class="muted small">' +
+          esc(u.date || "") +
+          "</p><ul>" +
+          (u.notes_en || []).map((n) => "<li>" + esc(n) + "</li>").join("") +
+          "</ul><ul class='notes-hi'>" +
+          (u.notes_hi || []).map((n) => "<li>" + esc(n) + "</li>").join("") +
+          "</ul></div>"
+      )
+      .join("");
   }
 });

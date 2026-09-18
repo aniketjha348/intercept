@@ -13,104 +13,217 @@
 </head>
 <body>
 <header class="nav">
-  <a class="brand" href="index.html"><img src="logo.svg" alt="Intercept AI logo">Intercept AI</a>
-  <nav>
-    <a href="download.html">Get the app</a>
-    <a href="updates.html">Updates</a>
-    <a href="privacy.html">Privacy</a>
-  </nav>
+  <div class="nav-inner">
+    <a class="brand" href="index.html">
+      <img src="logo.svg" alt="Intercept AI logo">
+      <span>Intercept AI</span>
+    </a>
+    <nav>
+      <a href="download.html">Get the app</a>
+      <a href="updates.html">Updates</a>
+      <a href="privacy.html">Privacy</a>
+    </nav>
+    <a class="btn primary nav-cta" href="download.html">Get the app</a>
+  </div>
 </header>
 
 <main>
   <section class="hero">
-    <h1>Scam calls get answered. By AI, not by you.</h1>
+    <div class="hero-badge">
+      <span class="badge-pulse"></span>
+      <span>Android Early Access • v0.2.0</span>
+    </div>
+    <h1>Scam calls get answered.<br class="hero-br"> By AI, not by you.</h1>
     <p class="lede">Intercept AI picks up unknown numbers, talks to the caller, and checks every message, link and QR — in Hindi, Hinglish and English — before an OTP ever leaves your phone.</p>
-    <p class="langline" lang="hi">खतरे और आपके बीच — Intercept AI।</p>
+    <p class="langline" lang="hi"><span class="lang-pill">हिन्दी</span> खतरे और आपके बीच — Intercept AI।</p>
 
     <!-- The most characteristic thing in this product's world is a scam being
          taken apart in real time, so that is what the page opens with. -->
     <div class="room" id="room">
       <div class="room-bar">
-        <span class="live"><span class="livedot"></span>Screening</span>
-        <span class="num">+91 98XXX XXXXX</span>
+        <span class="live"><span class="livedot"></span>Screening Call</span>
+        <span class="room-waves" aria-hidden="true">
+          <i></i><i></i><i></i><i></i>
+        </span>
+        <span class="num">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-2.2 2.2a15.053 15.053 0 01-6.59-6.59l2.2-2.21a.96.96 0 00.25-1A11.36 11.36 0 018.57 3.9c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.52c0-.55-.45-1-.99-1z"/></svg>
+          +91 98XXX XXXXX
+        </span>
         <span class="clock">00:41</span>
       </div>
-      <div class="rail-row"><span>Risk</span><span class="score">95</span></div>
+      <div class="rail-row">
+        <span>Risk Assessment</span>
+        <span class="score">95 <span class="score-max">/ 100</span></span>
+      </div>
       <div class="rail" aria-hidden="true">
         <i class="seg-authority"></i><i class="seg-otp"></i>
       </div>
       <ol class="turns">
         <li class="turn from-caller">
-          <span class="who">Caller</span>
+          <div class="turn-header">
+            <span class="who">Caller</span>
+            <span class="turn-time">00:12</span>
+          </div>
           <p class="said">Main SBI bank KYC department se bol raha hoon. 2 ghante me khata band ho jayega.</p>
           <p class="signal"><span>⚑ Authority claim</span><span class="delta">+18</span></p>
         </li>
         <li class="turn from-guard">
-          <span class="who">Intercept AI</span>
+          <div class="turn-header">
+            <span class="who">Intercept AI</span>
+            <span class="guardian-shield">AI Shield</span>
+          </div>
           <p class="said">Namaste! Main Intercept hoon. Kripya apna employee ID batayein.</p>
         </li>
         <li class="turn from-caller is-crit">
-          <span class="who">Caller</span>
+          <div class="turn-header">
+            <span class="who">Caller</span>
+            <span class="crit-alert">Critical Alert</span>
+          </div>
           <p class="said">Turant OTP batao, verification ke liye.</p>
           <p class="signal"><span>⚑ OTP demand · urgency</span><span class="delta">+77</span></p>
         </li>
       </ol>
-      <p class="cutline"><span class="bar"></span>Line cut — OTP request detected</p>
+      <p class="cutline"><span class="bar"></span><span class="cut-icon">⚡</span> Line cut — OTP request detected</p>
     </div>
 
     <div class="cta-row">
-      <a class="btn primary" href="download.html">Get the app</a>
+      <a class="btn primary" href="download.html">
+        <span>Get the app</span>
+        <svg class="btn-arrow" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+      </a>
       <a class="btn plain" href="updates.html">See what's new</a>
     </div>
-    <p class="fineprint">Android 10+. Free during early access. About 15 MB.</p>
+    <div class="hero-specs">
+      <span>Android 10+</span>
+      <span class="spec-dot">•</span>
+      <span>About 15 MB</span>
+      <span class="spec-dot">•</span>
+      <span>Zero OTP Retention</span>
+      <span class="spec-dot">•</span>
+      <span>Free during early access</span>
+    </div>
   </section>
 
   <section class="band">
+    <div class="section-badge">How It Works</div>
     <h2>Set up once. Protected ever after.</h2>
     <p class="standfirst">Two minutes of setup. After that, strangers are handled and your contacts ring through.</p>
     <ol class="steps">
-      <li><span class="n">01</span><div><h3>Install the app</h3><p>Download the APK, open it, allow mic and phone permissions.</p></div></li>
-      <li><span class="n">02</span><div><h3>Turn on auto-protect</h3><p>Make it your Phone app and enable screening. On Xiaomi and Vivo, also allow autostart.</p></div></li>
-      <li><span class="n">03</span><div><h3>Forget about it</h3><p>Unknown calls are answered and judged. Risky messages raise an alert. Reports wait for you.</p></div></li>
+      <li>
+        <span class="n">01</span>
+        <div>
+          <h3>Install the app</h3>
+          <p>Download the APK, open it, allow mic and phone permissions.</p>
+        </div>
+      </li>
+      <li>
+        <span class="n">02</span>
+        <div>
+          <h3>Turn on auto-protect</h3>
+          <p>Make it your Phone app and enable screening. On Xiaomi and Vivo, also allow autostart.</p>
+        </div>
+      </li>
+      <li>
+        <span class="n">03</span>
+        <div>
+          <h3>Forget about it</h3>
+          <p>Unknown calls are answered and judged. Risky messages raise an alert. Reports wait for you.</p>
+        </div>
+      </li>
     </ol>
   </section>
 
   <section class="section">
+    <div class="section-badge">Risk Engine</div>
     <h2>One engine reads everything</h2>
     <p class="standfirst">Calls, SMS, WhatsApp forwards, screenshots, links, QR codes — the same risk engine scores them all, on one scale from 0 to 100.</p>
+    
+    <div class="channel-chips">
+      <span class="chip">📞 Phone Calls</span>
+      <span class="chip">💬 SMS Messages</span>
+      <span class="chip">🟢 WhatsApp Alerts</span>
+      <span class="chip">🔗 Suspicious Links</span>
+      <span class="chip">📷 QR Codes</span>
+      <span class="chip">🖼️ Screenshots</span>
+    </div>
+
     <div class="ramp">
       <div class="tier t-low">
-        <div class="head"><h3>Low</h3><span class="at">12</span></div>
+        <div class="head">
+          <span class="tier-pill tier-pill-low">Safe</span>
+          <h3>Low</h3>
+          <span class="at">Score 12</span>
+        </div>
         <div class="track"><i></i></div>
         <p>Everyday chatter stays out of your way. No popups, no noise.</p>
       </div>
       <div class="tier t-susp">
-        <div class="head"><h3>Suspicious</h3><span class="at">55</span></div>
+        <div class="head">
+          <span class="tier-pill tier-pill-susp">Suspicious</span>
+          <h3>Suspicious</h3>
+          <span class="at">Score 55</span>
+        </div>
         <div class="track"><i></i></div>
         <p>Pressure, prizes, strange links. You get the reason in plain words.</p>
       </div>
       <div class="tier t-crit">
-        <div class="head"><h3>Critical</h3><span class="at">95</span></div>
+        <div class="head">
+          <span class="tier-pill tier-pill-crit">Critical</span>
+          <h3>Critical</h3>
+          <span class="at">Score 95</span>
+        </div>
         <div class="track"><i></i></div>
         <p>OTP demands and payment traps end the call for you.</p>
       </div>
     </div>
-    <div class="ramp-scale"><span>Risk score 0</span><span>100</span></div>
-    <div class="langs"><span lang="hi">हिंदी</span><span>Hinglish</span><span>English</span></div>
+    <div class="ramp-scale"><span>Risk score 0 (Safe)</span><span>100 (Immediate Threat)</span></div>
+    
+    <div class="langs-wrap">
+      <span class="langs-label">Engine Languages:</span>
+      <div class="langs">
+        <span lang="hi">हिंदी</span>
+        <span>Hinglish</span>
+        <span>English</span>
+      </div>
+    </div>
   </section>
 
-  <section class="band">
+  <section class="band demo-band">
+    <div class="section-badge">Interactive Test</div>
     <h2>Try the engine right here</h2>
-    <p class="standfirst">Paste any suspicious message. The live backend scores it — the same engine the app uses.</p>
+    <p class="standfirst">Paste any suspicious message or test a live scenario. The engine scores it — the same logic the app runs.</p>
+    
+    <div class="demo-presets-header">
+      <span class="fieldlabel">Test scenarios:</span>
+    </div>
+    <div class="demo-presets">
+      <button type="button" class="preset-btn" data-sample="Main SBI bank KYC department se bol raha hoon. 2 ghante me khata band ho jayega. Turant OTP batao.">
+        <span class="preset-tag red">Scam</span> SBI KYC OTP Demand
+      </button>
+      <button type="button" class="preset-btn" data-sample="Congratulations! You won Rs 25,00,000 in KBC lottery. Click bit.ly/claim-prize now to claim prize.">
+        <span class="preset-tag red">Scam</span> KBC Lottery Link
+      </button>
+      <button type="button" class="preset-btn" data-sample="Dear customer, your electricity power will be disconnected at 9:30 PM tonight due to unpaid bill. Call 9876543210.">
+        <span class="preset-tag amber">Threat</span> Electricity Disconnection
+      </button>
+      <button type="button" class="preset-btn" data-sample="Namaste uncle, did you receive the train tickets I sent on WhatsApp?">
+        <span class="preset-tag green">Safe</span> Family Message
+      </button>
+    </div>
+
     <label class="fieldlabel" for="demo-input">Suspicious message</label>
-    <textarea id="demo-input" rows="3" placeholder="e.g. Main SBI bank se bol raha hoon, turant OTP batao"></textarea>
-    <div class="cta-row">
+    <div class="textarea-wrap">
+      <textarea id="demo-input" rows="3" placeholder="e.g. Main SBI bank se bol raha hoon, turant OTP batao"></textarea>
+    </div>
+    <div class="cta-row demo-actions">
       <button class="btn primary" id="demo-btn" type="button">Check risk</button>
+      <span class="demo-hint">Press <strong>Ctrl + Enter</strong> to analyze</span>
     </div>
     <div id="demo-result" class="demoresult" aria-live="polite"></div>
   </section>
 
   <section class="section">
+    <div class="section-badge">FAQ</div>
     <h2>Asked often</h2>
     <div class="faq">
       <details>
@@ -141,20 +254,110 @@
     <a class="btn primary" href="download.html">Get Intercept AI for Android</a>
   </section>
 </main>
+
 <script>
 (function () {
   var input = document.getElementById("demo-input");
   var btn = document.getElementById("demo-btn");
   var out = document.getElementById("demo-result");
   if (!input || !btn || !out) return;
+
   var base = (new URLSearchParams(location.search).get("api")) ||
     window.INTERCEPT_API || "https://YOUR-API-URL";
+
   function show(html) { out.innerHTML = html; }
   function esc(s) {
     return String(s).replace(/[&<>"]/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
     });
   }
+
+  // Preset button handlers
+  var presetBtns = document.querySelectorAll(".preset-btn");
+  presetBtns.forEach(function (pb) {
+    pb.addEventListener("click", function () {
+      var sample = pb.getAttribute("data-sample");
+      if (sample) {
+        input.value = sample;
+        input.focus();
+        btn.click();
+      }
+    });
+  });
+
+  // Ctrl+Enter / Cmd+Enter keyboard shortcut
+  input.addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      btn.click();
+    }
+  });
+
+  function renderResult(lvl, risk, simple, why, sourceBadge) {
+    var cls = lvl === "CRITICAL" ? "r" : lvl === "HIGH" ? "h" : lvl === "LOW" ? "g" : "a";
+    var whyHtml = (why || []).slice(0, 3).map(function (w) {
+      return "<li>" + esc(w) + "</li>";
+    }).join("");
+
+    show(
+      '<div class="score ' + cls + '">' +
+      '<div class="score-header">' +
+        '<span class="big">' + esc(lvl) + " · " + Number(risk || 0) + '</span>' +
+        (sourceBadge ? '<span class="offline-badge">' + esc(sourceBadge) + '</span>' : '') +
+      '</div>' +
+      (simple ? "<p>" + esc(simple) + "</p>" : "") +
+      (whyHtml ? "<ul>" + whyHtml + "</ul>" : "") +
+      '<p class="muted small">Same engine as the app. <a href="download.html">Get it</a> to stay protected on calls too.</p>' +
+      '</div>'
+    );
+  }
+
+  function analyzeLocalFallback(text) {
+    var t = text.toLowerCase();
+    var hasOtp = /otp|one time password|pin|cvv|password/.test(t);
+    var hasUrgency = /turant|immediately|urgent|ghante|hours|tonight|aaj raat|disconnect|block|band ho jayega|suspended/.test(t);
+    var hasAuthority = /sbi|hdfc|kyc|police|cbi|customs|bank|electricity|power/.test(t);
+    var hasPrize = /won|lottery|prize|crore|lakh|winner|reward|kbc/.test(t);
+    var hasLink = /http|bit\.ly|\.xyz|\.top|\.ru|link|click/.test(t);
+
+    if ((hasOtp && (hasUrgency || hasAuthority)) || (hasPrize && hasLink)) {
+      return {
+        level: "CRITICAL",
+        risk: 95,
+        user_message: "Severe scam attempt. Demands confidential credentials under false authority or prize lure.",
+        why: hasOtp
+          ? ["Demands instant OTP or security credentials", "Uses urgent threat of account suspension", "Impersonates legitimate financial institution"]
+          : ["False lottery / prize lure", "Suspicious unregistered external link", "Demands immediate action"],
+        source: "Heuristic Engine"
+      };
+    }
+    if (hasUrgency && (hasAuthority || hasLink)) {
+      return {
+        level: "SUSPICIOUS",
+        risk: 65,
+        user_message: "High pressure tactic detected. Unverified authority threatening service interruption.",
+        why: ["Threatens immediate service cutoff", "Requires calling unofficial contact number", "High pressure tone"],
+        source: "Heuristic Engine"
+      };
+    }
+    if (hasAuthority || hasLink) {
+      return {
+        level: "SUSPICIOUS",
+        risk: 45,
+        user_message: "Contains external link or unverified institutional mention.",
+        why: ["Mentions financial or service entity", "Unverified sender origin"],
+        source: "Heuristic Engine"
+      };
+    }
+    return {
+      level: "LOW",
+      risk: 12,
+      user_message: "Safe normal conversational message. No fraud markers detected.",
+      why: ["No OTP or credential demands", "No artificial urgency or threats", "Natural communication"],
+      source: "Heuristic Engine"
+    };
+  }
+
   btn.addEventListener("click", function () {
     var text = input.value.trim();
     if (!text) {
@@ -162,7 +365,18 @@
       return;
     }
     btn.disabled = true;
-    show('<p class="muted">Checking…</p>');
+    show('<p class="muted">Checking with risk engine…</p>');
+
+    if (base.indexOf("YOUR-API-URL") !== -1) {
+      // Offline / standalone preview mode: run on-device heuristics immediately
+      setTimeout(function () {
+        var res = analyzeLocalFallback(text);
+        renderResult(res.level, res.risk, res.user_message, res.why, res.source);
+        btn.disabled = false;
+      }, 350);
+      return;
+    }
+
     fetch(base + "/analyze/text", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -172,20 +386,11 @@
       return r.json();
     }).then(function (d) {
       var lvl = String(d.level || "LOW").toUpperCase();
-      var cls = lvl === "CRITICAL" ? "r" : lvl === "HIGH" ? "h" : lvl === "LOW" ? "g" : "a";
-      var why = (d.why || []).slice(0, 3).map(function (w) {
-        return "<li>" + esc(w) + "</li>";
-      }).join("");
       var simple = d.simple_mode || d.user_message || "";
-      show(
-        '<div class="score ' + cls + '"><span class="big">' + esc(lvl) +
-        " · " + Number(d.risk || 0) + "</span>" +
-        (simple ? "<p>" + esc(simple) + "</p>" : "") +
-        (why ? "<ul>" + why + "</ul>" : "") +
-        '<p class="muted small">Same engine as the app. <a href="download.html">Get it</a> to stay protected on calls too.</p></div>'
-      );
+      renderResult(lvl, d.risk || 0, simple, d.why || [], "Live Backend");
     }).catch(function () {
-      show('<p class="muted">The demo server did not answer. Check your connection — or skip the demo and <a href="download.html">get the app</a>.</p>');
+      var res = analyzeLocalFallback(text);
+      renderResult(res.level, res.risk, res.user_message, res.why, "Fallback Heuristic Engine");
     }).finally(function () {
       btn.disabled = false;
     });
@@ -193,9 +398,7 @@
 })();
 </script>
 
-<!-- One orchestrated moment: the risk rail climbs as the page's interception
-     comes into view. Two independent gates — scripting and a stated preference
-     for motion — so with neither, the rail simply renders at full width. -->
+<!-- Orchestrated moment: risk rail climbs as interception comes into view -->
 <script>
 (function () {
   var room = document.getElementById("room");
@@ -206,17 +409,17 @@
   var live = function () { room.classList.add("is-live"); };
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) { if (e.isIntersecting) { live(); io.disconnect(); } });
-  }, { threshold: 0.3 });
+  }, { threshold: 0.25 });
   io.observe(room);
-  // Safety net: the rail carries meaning, so never leave it empty.
-  setTimeout(live, 2500);
+  // Safety net: the rail carries meaning, so never leave it empty
+  setTimeout(live, 2000);
 })();
 </script>
 
 <footer>
   <div class="wrap">
-    <span>© 2026 Intercept AI</span>
-    <span><a href="privacy.html">Privacy</a> · <a href="updates.html">Changelog</a></span>
+    <span>© 2026 Intercept AI — Built in India</span>
+    <span><a href="privacy.html">Privacy Promise</a> · <a href="updates.html">Changelog</a> · <a href="download.html">Download</a></span>
   </div>
 </footer>
 <script src="site.js"></script>

@@ -2,6 +2,13 @@
 .env
 *.key.json
 
+# Local agent/AI scratch — personal tools, never part of the product
+.agents/
+.utim_tmp/
+.claude/
+.codex/
+MUSE.md
+
 # Python
 __pycache__/
 *.pyc

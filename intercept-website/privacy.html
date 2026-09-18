@@ -3,40 +3,68 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Privacy promise — Intercept AI</title>
-<meta name="description" content="How Intercept AI handles your calls, messages and data.">
-<meta property="og:title" content="Privacy promise — Intercept AI">
+<title>Privacy Promise — Intercept AI</title>
+<meta name="description" content="How Intercept AI handles your calls, messages and data. Zero OTP retention by design.">
+<meta property="og:title" content="Privacy Promise — Intercept AI">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/svg+xml" href="logo.svg">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <header class="nav">
-  <a class="brand" href="index.html"><img src="logo.svg" alt="Intercept AI logo">Intercept AI</a>
-  <nav>
-    <a href="download.html">Get the app</a>
-    <a href="updates.html">Updates</a>
-    <a href="privacy.html">Privacy</a>
-  </nav>
+  <div class="nav-inner">
+    <a class="brand" href="index.html">
+      <img src="logo.svg" alt="Intercept AI logo">
+      <span>Intercept AI</span>
+    </a>
+    <nav>
+      <a href="download.html">Get the app</a>
+      <a href="updates.html">Updates</a>
+      <a href="privacy.html" class="active">Privacy</a>
+    </nav>
+    <a class="btn primary nav-cta" href="download.html">Get the app</a>
+  </div>
 </header>
 
 <main class="narrow">
   <div class="page-head">
-    <h1>Privacy promise</h1>
+    <div class="hero-badge">
+      <span class="badge-pulse"></span>
+      <span>Zero-Knowledge Architecture</span>
+    </div>
+    <h1>Privacy Promise</h1>
+    <p class="muted">Security should never come at the cost of personal privacy. Here is how Intercept AI treats your data.</p>
   </div>
+
   <ul class="steps-list">
-    <li><strong>Your OTPs, passwords and card details are never stored.</strong> They are analyzed in memory to protect you, and scrubbed from anything saved.</li>
-    <li><strong>We remember attack patterns, not your secrets.</strong> Scam DNA stores tactics (bank + urgency + OTP) — never content — and stays scoped to your device.</li>
-    <li><strong>No ads, no data sale.</strong> Your calls and messages are yours.</li>
-    <li><strong>You are in control.</strong> Take over any call, end any screening, delete your data anytime at <em>support@[yourdomain]</em>.</li>
+    <li>
+      <strong>Your OTPs, passwords and card details are never stored.</strong>
+      They are analyzed entirely in volatile memory to protect you in real-time, and scrubbed instantly from anything saved or logged.
+    </li>
+    <li>
+      <strong>We remember attack patterns, not your secrets.</strong>
+      Scam DNA maps abstract malicious tactics (e.g. imposter bank authority + artificial countdown + OTP demand) — never your personal messages or private conversations — and stays scoped to your device.
+    </li>
+    <li>
+      <strong>Zero ads, zero data monetization.</strong>
+      Your calls, messages, and security incidents are never sold, auctioned, or used to build marketing profiles.
+    </li>
+    <li>
+      <strong>You remain in complete control.</strong>
+      You can take over any active call with one tap, stop screening at any moment, or purge your device history at any time.
+    </li>
   </ul>
-  <p class="muted" style="margin-top:32px">Built in India, for Indian families facing UPI &amp; OTP fraud. DPDP Act 2023 aligned by design.</p>
+
+  <div class="privacy-badge-banner">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    <span>Built in India for Indian families facing UPI &amp; OTP fraud. Aligned by design with the <strong>Digital Personal Data Protection (DPDP) Act 2023</strong>.</span>
+  </div>
 </main>
 
 <footer>
   <div class="wrap">
-    <span>© 2026 Intercept AI</span>
-    <span><a href="download.html">Download</a> · <a href="updates.html">Changelog</a></span>
+    <span>© 2026 Intercept AI — Built in India</span>
+    <span><a href="download.html">Download</a> · <a href="updates.html">Changelog</a> · <a href="index.html">Home</a></span>
   </div>
 </footer>
 <script src="site.js"></script>

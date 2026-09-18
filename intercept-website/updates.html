@@ -12,26 +12,39 @@
 </head>
 <body>
 <header class="nav">
-  <a class="brand" href="index.html"><img src="logo.svg" alt="Intercept AI logo">Intercept AI</a>
-  <nav>
-    <a href="download.html">Get the app</a>
-    <a href="updates.html">Updates</a>
-    <a href="privacy.html">Privacy</a>
-  </nav>
+  <div class="nav-inner">
+    <a class="brand" href="index.html">
+      <img src="logo.svg" alt="Intercept AI logo">
+      <span>Intercept AI</span>
+    </a>
+    <nav>
+      <a href="download.html">Get the app</a>
+      <a href="updates.html" class="active">Updates</a>
+      <a href="privacy.html">Privacy</a>
+    </nav>
+    <a class="btn primary nav-cta" href="download.html">Get the app</a>
+  </div>
 </header>
 
 <main class="narrow">
   <div class="page-head">
+    <div class="hero-badge">
+      <span class="badge-pulse"></span>
+      <span>Release Changelog</span>
+    </div>
     <h1>What's new</h1>
-    <p class="muted">Every release, in plain words — English + <span lang="hi">हिंदी</span>. The app tells you when one lands.</p>
+    <p class="muted">Every release documented in plain words — English and <span lang="hi">हिंदी</span>. The app notifies you automatically when an update arrives.</p>
   </div>
-  <div id="changelog">Loading…</div>
+  
+  <div class="timeline-wrap">
+    <div id="changelog">Loading release notes…</div>
+  </div>
 </main>
 
 <footer>
   <div class="wrap">
-    <span>© 2026 Intercept AI</span>
-    <span><a href="privacy.html">Privacy</a> · <a href="download.html">Download</a></span>
+    <span>© 2026 Intercept AI — Built in India</span>
+    <span><a href="privacy.html">Privacy Promise</a> · <a href="download.html">Download</a> · <a href="index.html">Home</a></span>
   </div>
 </footer>
 <script src="site.js"></script>
