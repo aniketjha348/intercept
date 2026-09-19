@@ -168,6 +168,14 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
         }
     }
 
+    /**
+     * AI answering: the protection the owner actually wants, and the one gate
+     * that needs no phone-app role at all. It is a carrier-forwarding state —
+     * which is exactly why Intercept can protect calls while the owner keeps
+     * their own phone app.
+     */
+    fun aiGate(): Gate = if (container.forwardingOn) Gate.READY else Gate.TODO
+
     fun dialerLabel(): String = try {
         ctx.getSystemService(TelecomManager::class.java)?.defaultDialerPackage ?: "unknown"
     } catch (_: Exception) {
@@ -270,15 +278,22 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
         "Backend reachable" to (backend ?: Gate.TODO),
         "Permissions (mic, phone, SMS, contacts)" to permsGate(),
         "Call-screening role" to roleGate(RoleManager.ROLE_CALL_SCREENING),
-        "Default Phone app" to dialerGate(),
+        "AI answering (carrier forwarding)" to aiGate(),
+        "Default Phone app (optional)" to dialerGate(),
         "Battery unrestricted" to batteryGate(),
         "Notification access" to notifGate(),
     )
     // READY only: "not available on this device" is not "passing", and the
     // headline below used to count it as one.
-    val readyCount = gates.count { it.second == Gate.READY }
-    val naCount = gates.count { it.second == Gate.NA }
-    val allReady = gates.all { it.second != Gate.TODO }
+    // The Phone-app row is the only optional one: Intercept is an extra layer
+    // next to the owner's own phone app, never a replacement. The screening role
+    // takes unknown calls and carrier forwarding lets the AI answer them —
+    // neither needs the phone-app role, so it must not block setup.
+    val optionalGates = setOf("Default Phone app (optional)")
+    val requiredGates = gates.filterNot { it.first in optionalGates }
+    val readyCount = requiredGates.count { it.second == Gate.READY }
+    val naCount = requiredGates.count { it.second == Gate.NA }
+    val allReady = requiredGates.all { it.second != Gate.TODO }
     LaunchedEffect(readyCount) { container.setupProgress = readyCount }
 
     Scaffold(
@@ -309,7 +324,9 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "Protection starts only when every check below passes. One setup, then Intercept works on its own — no taps per call or message.",
+                "Intercept runs alongside your own phone app — it does not replace it. " +
+                    "Every check below except the optional Phone-app one must pass; after that " +
+                    "it works on its own, with no taps per call or message.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Muted,
             )
@@ -325,7 +342,7 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                 }
             }
 
-            GateRow("Permissions (mic, phone, SMS, contacts, calls)", gates[1].second, "Mic hears callers, phone answers, SMS/Contacts know strangers, call access proves dialer identity.") {
+            GateRow("Permissions (mic, phone, SMS, contacts, calls)", gates[1].second, "Mic hears callers, SMS and Contacts tell friend from stranger, and call access is what lets Intercept decline a call you did not want.") {
                 if (!container.permAsked) {
                     OutlinedButton(
                         onClick = { permLauncher.launch(neededPerms().toTypedArray()) },
@@ -346,7 +363,14 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                 ) { Text("Enable screening") }
             }
 
-            GateRow("Default Phone app", gates[3].second, "Lets Intercept auto-answer strangers. Xiaomi hand path: Settings → Apps → Manage apps → menu → Default apps → Dial → Intercept AI.") {
+            GateRow("AI answering (carrier forwarding)", gates[3].second, "The layer that protects calls: unknown callers are declined here and the network hands them to the AI, which talks to them for you. Everyone else keeps reaching you normally on your own phone app.") {
+                OutlinedButton(
+                    onClick = { nav.navigate(Routes.FORWARDING) },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Turn on AI answering") }
+            }
+
+            GateRow("Default Phone app (optional)", gates[4].second, "Not required for protection — Intercept works next to your phone app. Make it the Phone app only if you want Intercept's own in-call screen. Xiaomi hand path: Settings → Apps → Manage apps → menu → Default apps → Dial → Intercept AI.") {
                 Text(
                     "Phone app right now: " + dialerLabel(),
                     style = MaterialTheme.typography.bodySmall, color = Muted
@@ -367,7 +391,7 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                 }
             }
 
-            GateRow("Battery unrestricted", gates[4].second, "Otherwise Xiaomi/Vivo/Oppo kill protection overnight. Also enable Autostart + lock in Recents.") {
+            GateRow("Battery unrestricted", gates[5].second, "Otherwise Xiaomi/Vivo/Oppo kill protection overnight. Also enable Autostart + lock in Recents.") {
                 OutlinedButton(
                     onClick = {
                         try {
@@ -386,7 +410,7 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
                 ) { Text("Allow background running") }
             }
 
-            GateRow("Notification access", gates[5].second, "Lets Intercept scan WhatsApp, Telegram, Signal, Instagram and more with zero paste.") {
+            GateRow("Notification access", gates[6].second, "Lets Intercept scan WhatsApp, Telegram, Signal, Instagram and more with zero paste.") {
                 OutlinedButton(
                     onClick = {
                         try {
@@ -406,7 +430,7 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
             Column(
                 Modifier.fillMaxWidth(),
             ) {
-                SwitchRow("Auto-answer unknown calls", autoCalls) {
+                SwitchRow("Let the AI answer unknown calls", autoCalls) {
                     autoCalls = it; container.autoCalls = it; tick++
                     AlwaysOnService.sync(ctx)
                 }
@@ -442,8 +466,8 @@ fun SetupScreen(nav: NavController, container: AppContainer) {
             ) {
                 Text(
                     if (allReady && autoCalls) "Done — protect me automatically"
-                    else if (!autoCalls) "Turn on Auto-answer above to finish"
-                    else "Finish all green steps first ($readyCount/${gates.size})"
+                    else if (!autoCalls) "Turn on AI answering above to finish"
+                    else "Finish all green steps first ($readyCount/${requiredGates.size})"
                 )
             }
             Spacer(Modifier.height(28.dp))

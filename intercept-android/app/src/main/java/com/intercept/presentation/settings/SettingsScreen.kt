@@ -663,7 +663,7 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
 
                 modifier = Modifier.fillMaxWidth()
 
-            ) { Text("Set as default Phone app (answer real calls)") }
+            ) { Text("Optional: make Intercept the Phone app (adds its in-call screen)") }
 
 
 
