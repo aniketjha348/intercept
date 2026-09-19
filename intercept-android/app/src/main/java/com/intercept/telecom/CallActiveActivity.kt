@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.intercept.appContainer
 import com.intercept.presentation.components.StatusDot
 import com.intercept.presentation.theme.InterceptTheme
 import com.intercept.presentation.theme.Machine
@@ -76,6 +77,12 @@ class CallActiveActivity : ComponentActivity() {
     private var stateText by mutableStateOf("")
     private var speaker by mutableStateOf(false)
 
+    /** A ringing call needs its own controls: Answer must be on screen. */
+    private var ringing by mutableStateOf(false)
+
+    /** Carrier forwarding armed = declining sends this call to the cloud AI. */
+    private var forwarding by mutableStateOf(false)
+
     private val ticker = object : Runnable {
         override fun run() {
             refresh()
@@ -111,6 +118,12 @@ class CallActiveActivity : ComponentActivity() {
             else -> ""
         }
         speaker = InterceptInCallService.speakerOn()
+        ringing = InterceptInCallService.currentState() == Call.STATE_RINGING
+        forwarding = try {
+            appContainer().forwardingOn
+        } catch (_: Exception) {
+            false
+        }
         if (!InterceptInCallService.hasCall() && !isFinishing) {
             try {
                 finish()
@@ -174,32 +187,74 @@ class CallActiveActivity : ComponentActivity() {
                         }
                     }
                     Spacer(Modifier.height(28.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedButton(
-                            onClick = {
-                                InterceptInCallService.setSpeaker(!speaker)
-                                refresh()
-                            },
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = if (speaker) Room else RoomInk,
-                                containerColor = if (speaker) RoomInk else Room,
-                            ),
-                            modifier = Modifier.weight(1f)
-                        ) { Text(if (speaker) "Speaker on" else "Speaker") }
+                    if (ringing) {
+                        // Answering is always the owner's own tap: the app never
+                        // picks up by itself, because a store app cannot speak
+                        // into a cellular uplink (see InterceptInCallService).
                         Button(
                             onClick = {
+                                InterceptInCallService.answer()
+                                refresh()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = RoomInk,
+                                contentColor = Room,
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Answer") }
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedButton(
+                            onClick = {
+                                // Armed forwarding turns a decline into a handoff:
+                                // the carrier reads "busy" and hands the call to
+                                // the number where the cloud AI answers.
                                 InterceptInCallService.hangup()
                                 try {
                                     finish()
                                 } catch (_: Exception) {
                                 }
                             },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = RiskCritical,
-                                contentColor = Paper,
-                            ),
-                            modifier = Modifier.weight(1f)
-                        ) { Text("Hang up") }
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = RoomInk),
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(if (forwarding) "Send to AI" else "Decline") }
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            if (forwarding)
+                                "Decline hands this caller to the AI — it answers and talks for you."
+                            else
+                                "AI answering is off, so this call rings here. Turn it on from " +
+                                    "Home and unknown callers are answered by the AI instead.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = RoomMuted,
+                        )
+                    } else {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OutlinedButton(
+                                onClick = {
+                                    InterceptInCallService.setSpeaker(!speaker)
+                                    refresh()
+                                },
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = if (speaker) Room else RoomInk,
+                                    containerColor = if (speaker) RoomInk else Room,
+                                ),
+                                modifier = Modifier.weight(1f)
+                            ) { Text(if (speaker) "Speaker on" else "Speaker") }
+                            Button(
+                                onClick = {
+                                    InterceptInCallService.hangup()
+                                    try {
+                                        finish()
+                                    } catch (_: Exception) {
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = RiskCritical,
+                                    contentColor = Paper,
+                                ),
+                                modifier = Modifier.weight(1f)
+                            ) { Text("Hang up") }
+                        }
                     }
                 }
             }
