@@ -1,4 +1,10 @@
 # Pinned: agent worker runs on the demo laptop (NOT in the Docker image).
 livekit-agents==1.8.2
 livekit-plugins-google==1.8.2
+# LiveKit Cloud noise suppression (Krisp NC) for the SIP leg. Phone audio is
+# 8 kHz with line hiss and comfort noise, and a realtime AUDIO model feeds
+# straight on it — without this the caller's voice arrives half-buried in
+# static. Included in LiveKit Cloud, no extra key. `~=0.2` is the line the
+# agents SDK expects; agent.py degrades to raw audio if it is missing.
+livekit-plugins-noise-cancellation~=0.2
 python-dotenv==1.2.3

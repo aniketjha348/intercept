@@ -18,13 +18,20 @@ import android.net.Uri
  */
 object CallForwarding {
 
-    /** Forward when busy. A declined call reads as busy — this is our path. */
-    fun activateWhenBusy(ctx: Context, number: String): Boolean = dial(ctx, "*67*$number#")
+    /**
+     * Forward when busy. A declined call reads as busy — this is our path.
+     *
+     * The leading `**` is not decoration: GSM/3GPP registers a forwarding with
+     * `**<code>*<number>#`; the single-star form (`*67*…`) is not an MMI code at
+     * all, so the dialer would either reject it or read it as a US caller-ID
+     * prefix — and forwarding would silently stay off while the UI said "on".
+     */
+    fun activateWhenBusy(ctx: Context, number: String): Boolean = dial(ctx, "**67*$number#")
 
     fun disableWhenBusy(ctx: Context): Boolean = dial(ctx, "##67#")
 
     /** Forward when not answered — fallback where a decline is not delivered. */
-    fun activateWhenUnanswered(ctx: Context, number: String): Boolean = dial(ctx, "*61*$number#")
+    fun activateWhenUnanswered(ctx: Context, number: String): Boolean = dial(ctx, "**61*$number#")
 
     fun disableWhenUnanswered(ctx: Context): Boolean = dial(ctx, "##61#")
 

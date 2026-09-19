@@ -116,6 +116,17 @@ carrier forwards it to the number, and the AI answers. Saved contacts always
 ring through. Turning forwarding off in the same screen dials `##67#` and
 `##61#`.
 
+> **Arming this is not optional.** The app never answers a call itself and never
+> plays AI audio into one. A store app cannot write into a cellular uplink, so
+> the old "answer on device and screen it" path could only play the guardian
+> voice out of the owner's own earpiece at full volume while the open mic fed it
+> back up the line — callers heard a screech instead of a voice, and the owner
+> heard a blast. That path is gone: `InterceptInCallService` shows call controls
+> and nothing else, `AutoScreenService` is messages-only, and the audio helpers
+> that did the injecting (`InCallAudio`, `LiveVoice`) are deleted. With
+> forwarding off, an unknown call simply rings and the owner gets one
+> notification saying AI answering is off.
+
 Because this is a carrier setting, it is billed by the network and outlives the
 app — the screen says so, and tells the owner to clear it before uninstalling.
 
@@ -130,6 +141,25 @@ curl -X POST $INTERCEPT_API/calls/inbound -H 'content-type: application/json' \
      -d '{"caller":"+919999999999","owner_name":"Aniket"}'
 ```
 
+### One command to check the whole chain
+
+```bash
+python scripts/e2e_livekit.py              # wiring: trunk, rule, number, token, worker deps
+python scripts/e2e_livekit.py --simulate   # push the real worker into a test room and verify the link
+python scripts/e2e_livekit.py --watch 120  # dial the number while it watches LiveKit
+```
+
+It reads both `.env` files (nothing secret is printed), signs its own LiveKit
+admin tokens, and exits non-zero on any FAIL, so it can gate a demo. Read-only
+in the default mode; `--simulate` cleans up the room, the dispatch and the test
+session it creates.
+
+The two API details it encodes, which cost an afternoon to rediscover: the SIP
+service rejects a plain video grant (**401 permissions denied** — it needs a
+`sip.admin` claim), and **agent dispatch refuses a room-scoped call made with a
+wildcard grant** — it wants `video.room` set to that exact room, not just
+`roomAdmin`.
+
 Then:
 
 1. Call the SIP number from any phone.
@@ -143,9 +173,14 @@ Then:
 
 | Symptom | Cause |
 | --- | --- |
-| Call rings, AI never speaks | `agentName` in the rule ≠ `intercept-agent`, or the worker isn't running |
+| Call rings, AI never speaks | `agentName` in the rule ≠ `intercept-agent`, or the worker isn't running. `python scripts/e2e_livekit.py --simulate` answers this one directly |
+| Nothing to dial at all | no inbound trunk, or the rule points at a trunk/phone number that was deleted (`rule trunk '…' resolves` FAILs in the script). Recreate the number and re-attach it to the rule |
+| Call connects, nobody speaks, job never appears | the worker raised before joining. The usual cause is the realtime import: Python wants `livekit.plugins.google.realtime`, not the Node `google.beta.realtime` layout, and a bad model id fails the same way. `agent.py` now imports both layouts and logs `agent joining <room>` the moment it is in |
+| Caller hears hiss/static, or the AI misses words | phone audio is 8 kHz narrowband and the realtime model hears it raw. Install `livekit-plugins-noise-cancellation` (agent requirements) so `room_options` applies Krisp NC — and do **not** also enable noise cancellation on the SIP trunk, or the two models stack and it gets worse |
 | AI speaks, but `/calls/live` and the report are empty | backend unreachable from the agent, or wrong `INTERCEPT_API` |
 | Two calls interfere / closing line only once | should be fixed by per-job `CallState`; if seen, the worker is running an old build |
+| A second voice talks over the agent | the app joined the room with its mic on. `/livekit/dispatch` is now only called for our own `intercept-<sid>` rooms — a SIP room already has an agent, and dispatching again puts two in it |
 | Room name leaks the caller's number | expected for an individual rule — switch to a specific-room rule |
-| Calls ring instead of going to the AI | forwarding not armed, or the carrier rejected the code — re-arm from Home; some carriers want `**67*` |
-| AI answers but the owner also hears it | on-device answer path was used, not forwarding — check `forwarding_on` and that `InterceptInCallService` did not auto-answer |
+| Calls ring instead of going to the AI | forwarding not armed, or the carrier rejected the code — arm it from Home; some carriers want `**67*` |
+| Caller hears a loud screech / "kat kat", owner hears a blast | the OLD on-device path: an installed build older than this one. Update the APK, and note `InterceptInCallService` now unmutes `STREAM_VOICE_CALL` on the next call to undo the mute an old build could have left behind |
+| Owner hears nothing on every call afterwards | an old build left `STREAM_VOICE_CALL` muted — the same unmute above repairs it on the next incoming call |

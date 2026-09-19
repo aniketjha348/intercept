@@ -3,15 +3,15 @@ package com.intercept.speech
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
-import android.os.Build
 import java.io.File
 import java.io.FileOutputStream
 
 /**
- * Human voice player: plays server-rendered guardian audio (Gemini TTS WAV)
- * into the call stream. stop() = barge-in: when the caller starts talking we
- * cut our own voice instantly, exactly like a human interrupted mid-sentence.
- * All failures are silent — callers use device TTS instead (see GuardianTts).
+ * Human voice player: plays server-rendered guardian audio (Gemini TTS WAV) on
+ * the MEDIA stream — the demo/analyze path, never a live call. stop() =
+ * barge-in: when the caller starts talking we cut our own voice instantly,
+ * exactly like a human interrupted mid-sentence. All failures are silent —
+ * callers use device TTS instead (see GuardianTts).
  */
 class GuardianAudio(context: Context) {
 
@@ -20,31 +20,25 @@ class GuardianAudio(context: Context) {
     @Volatile
     private var player: MediaPlayer? = null
 
-    /** Play WAV bytes. forCall routes into the voice stream so the caller hears it. */
-    fun play(wav: ByteArray, forCall: Boolean) {
+    /**
+     * Play WAV bytes on the media stream. Deliberately never the voice-call
+     * stream: that usage cannot reach a cellular uplink from a store app, it
+     * only blasts out of the owner's own earpiece at full volume and leaks back
+     * through the open mic — the screech callers used to hear.
+     */
+    fun play(wav: ByteArray) {
         stop()
         if (wav.isEmpty()) return
         try {
             val file = File(appContext.cacheDir, "guardian.wav")
             FileOutputStream(file).use { it.write(wav) }
             val mp = MediaPlayer()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                mp.setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(
-                            if (forCall) AudioAttributes.USAGE_VOICE_COMMUNICATION
-                            else AudioAttributes.USAGE_MEDIA
-                        )
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                        .build()
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                mp.setAudioStreamType(
-                    if (forCall) android.media.AudioManager.STREAM_VOICE_CALL
-                    else android.media.AudioManager.STREAM_MUSIC
-                )
-            }
+            mp.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+            )
             mp.setOnCompletionListener {
                 try {
                     it.reset()

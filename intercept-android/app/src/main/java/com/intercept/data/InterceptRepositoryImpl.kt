@@ -89,8 +89,12 @@ class InterceptRepositoryImpl(
         null
     }
 
-    override suspend fun livekitToken(sessionId: String): com.intercept.domain.model.LiveKitToken? = try {
-        val r = api.livekitToken("app-$sessionId", "intercept-$sessionId")
+    override suspend fun livekitToken(
+        sessionId: String,
+        room: String?,
+    ): com.intercept.domain.model.LiveKitToken? = try {
+        val want = room?.takeIf { it.isNotBlank() } ?: "intercept-$sessionId"
+        val r = api.livekitToken("app-$sessionId", want)
         if (r.token.isBlank() || r.url.isBlank()) null
         else com.intercept.domain.model.LiveKitToken(r.url, r.room, r.token)
     } catch (_: Exception) {
@@ -100,6 +104,12 @@ class InterceptRepositoryImpl(
     override suspend fun livekitDispatch(room: String): Boolean = try {
         api.livekitDispatch(mapOf("room" to room, "agent_name" to "intercept-agent"))
         true
+    } catch (_: Exception) {
+        false
+    }
+
+    override suspend fun bindForwarding(number: String): Boolean = try {
+        api.bindForwarding(mapOf("number" to number.trim()))["status"] == "bound"
     } catch (_: Exception) {
         false
     }
@@ -125,7 +135,8 @@ class InterceptRepositoryImpl(
                 com.intercept.domain.model.RiskLevel.of(it.level), it.turns,
                 objective = it.objective,
                 claimedOrg = it.claimedOrg,
-                escalating = it.escalating)
+                escalating = it.escalating,
+                room = it.room)
         }
     } catch (_: Exception) {
         emptyList()

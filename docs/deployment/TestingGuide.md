@@ -255,19 +255,20 @@ fun `known contact should NOT trigger auto-answer`() {
 
 **Expected:** Green status throughout, no crashes
 
-#### Scenario 2: Auto-Answer Flow
+#### Scenario 2: AI Answering Flow (forwarding)
 
 ```
-1. Auto-calls = ON
+1. "Let the AI answer my calls" = ON (carrier forwarding armed)
 2. Unknown number calls
 3. system: CallScreeningService.onScreenCall()
-3. InterceptScreeningService: setAllowCall(true)
-4. InterceptInCallService: onCallAdded()
-5. AutoScreenService: screenCall()
-6. STT starts → AI analyzes → TTS responds
+4. InterceptScreeningService: disallow + reject → the carrier forwards it
+5. carrier → LiveKit SIP room → intercept-agent answers
+6. agent logs "agent joining intercept-…" and speaks first
 ```
 
-**Expected:** Call answers within 2s, AI screening begins
+**Expected:** the caller talks to the AI; the owner's phone stops ringing and
+shows one notification. Nothing is answered on the phone itself — a store app
+cannot put audio into a cellular call, and trying is what produced the screech.
 
 #### Scenario 3: Manual Intercept Flow
 
@@ -327,9 +328,10 @@ adb logcat *.V | grep Intercept  # Verbose (most detailed)
 
 | Tag | Component | What to Look For |
 |-----|-----------|------------------|
-| `InterceptInCallService` | Call answering | "answer() called", "audio route set" |
-| `AutoScreenService` | AI processing | "screenCall started", "STT started", "API call sent" |
-| `InterceptScreeningService` | Call decisions | "shouldAutoAnswer", "setAllowCall" |
+| `InterceptInCallService` | In-call controls | "audio route set" (it never answers) |
+| `AutoScreenService` | Message scanning | "screenSms", the analyzed risk |
+| `InterceptScreeningService` | Call decisions | the disallow/reject path vs. allowed-through |
+| `intercept-agent` (laptop) | The AI answering | "agent joining intercept-…", `CALLER:` / `RISK:` lines |
 | `MainActivity` | App lifecycle | "onCreate", "intent handling" |
 
 ### Debug Commands

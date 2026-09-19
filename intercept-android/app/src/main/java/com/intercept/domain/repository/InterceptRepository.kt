@@ -23,14 +23,27 @@ interface InterceptRepository {
     /** Guardian voice bytes (WAV) for a reply, or null → use device TTS. */
     suspend fun speak(sessionId: String, text: String): ByteArray?
 
-    /** LiveKit room credentials bound to this call session, or null. */
-    suspend fun livekitToken(sessionId: String): com.intercept.domain.model.LiveKitToken?
+    /**
+     * LiveKit room credentials bound to this call session, or null.
+     *
+     * [room] is the room the call is really in — a forwarded call lives in the
+     * SIP rule's room (`int<caller-number>…`), not our `intercept-<id>` one.
+     * Null/blank keeps the convention. Asking for the wrong room silently joins
+     * an empty room: the transcript still streams, but the owner hears nothing.
+     */
+    suspend fun livekitToken(
+        sessionId: String,
+        room: String? = null,
+    ): com.intercept.domain.model.LiveKitToken?
 
     /** Calls being screened right now (forwarded or local). Empty = quiet. */
     suspend fun liveSessions(): List<com.intercept.domain.model.LiveSession>
 
     /** Send the voice agent into the call's room. False = keep current path. */
     suspend fun livekitDispatch(room: String): Boolean
+
+    /** Save the DID the cloud AI should answer on for this owner. */
+    suspend fun bindForwarding(number: String): Boolean
 
     /** Forwarding target + USSD codes. Never null; not-configured is a value. */
     suspend fun forwarding(): com.intercept.domain.model.Forwarding

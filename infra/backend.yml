@@ -46,6 +46,10 @@ Parameters:
   LlmModel:
     Type: String
     Default: gemini-2.5-flash-lite
+  AssistantForwardNumber:
+    Type: String
+    Default: ""
+    Description: "DID unknown calls are forwarded to (empty = AI answering cannot be armed in the app)"
 
 Resources:
   EcrRepo:
@@ -116,6 +120,8 @@ Resources:
                 Value: !Ref LlmModel
               - Name: ALLOW_NETWORK_FETCH
                 Value: "false"
+              - Name: ASSISTANT_FORWARD_NUMBER
+                Value: !Ref AssistantForwardNumber
       HealthCheckConfiguration:
         Protocol: HTTP
         Path: /health

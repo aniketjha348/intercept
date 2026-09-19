@@ -2,7 +2,6 @@ package com.intercept.di
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.intercept.audio.InCallAudio
 import com.intercept.data.InterceptRepositoryImpl
 import com.intercept.data.api.InterceptApiService
 import com.intercept.domain.model.CallRecord
@@ -225,6 +224,14 @@ class AppContainer(context: Context) {
     var watchOnlySid: String? = null
 
     /**
+     * The room that session is really in. A forwarded call is answered in the
+     * SIP dispatch rule's room (named after the caller), NOT in our own
+     * `intercept-<session id>` room — joining the wrong one puts the owner in an
+     * empty room where they can see the transcript but hear nobody.
+     */
+    var watchOnlyRoom: String? = null
+
+    /**
      * True when the user started screening a REAL ringing call we could not pick
      * up ourselves (not default dialer): they answer on speaker, AI listens
      * through the mic. Consumed once by the Live screen.
@@ -272,19 +279,25 @@ class AppContainer(context: Context) {
     /**
      * Voice-first reply: server voice when available, device TTS otherwise.
      * Respects the guardian-voice toggle. Never throws.
+     *
+     * [inLiveCall] speaks NOTHING, deliberately. A store app cannot put audio
+     * into a cellular uplink, so a reply played while a real call is up only
+     * leaks out of the speaker and back into the phone's own mic — the caller
+     * used to hear exactly that as a screech. On a live call the AI is read on
+     * screen, and the caller hears it only when the call went to LiveKit.
      */
-    suspend fun speakBest(sessionId: String, text: String, forCall: Boolean) {
-        if (!ttsEnabled || text.isBlank()) return
+    suspend fun speakBest(sessionId: String, text: String, inLiveCall: Boolean) {
+        if (inLiveCall || !ttsEnabled || text.isBlank()) return
         try {
             val bytes = repo.speak(sessionId, text)
             if (bytes != null && bytes.isNotEmpty()) {
-                guardianAudio.play(bytes, forCall)
+                guardianAudio.play(bytes)
                 return
             }
         } catch (_: Exception) {
         }
         try {
-            if (forCall) tts.speakForCall(text) else tts.speak(text)
+            tts.speak(text)
         } catch (_: Exception) {
         }
     }
@@ -301,21 +314,8 @@ class AppContainer(context: Context) {
         }
     }
 
-    /** Speaker routing for live screening of real calls. */
-    val audio = InCallAudio(appContext)
-
     /** Fresh speech recognizer per screening session (don't reuse across calls). */
     fun callerStt(): CallerStt = CallerStt(appContext) { language }
-
-    /** Realtime voice (beta) on/off. Off = proven STT+TTS turn path. */
-    var liveVoice: Boolean
-        get() = prefs.getBoolean("live_voice", false)
-        set(v) = prefs.edit().putBoolean("live_voice", v).apply()
-
-    /** LiveKit studio transport (beta) on/off. Off = raw-WS bridge path. */
-    var livekitTransport: Boolean
-        get() = prefs.getBoolean("livekit_transport", false)
-        set(v) = prefs.edit().putBoolean("livekit_transport", v).apply()
 
     fun appContextForVoice(): android.content.Context = appContext
 

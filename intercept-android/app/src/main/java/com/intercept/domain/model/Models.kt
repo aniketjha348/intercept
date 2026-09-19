@@ -48,6 +48,13 @@ data class LiveSession(
     val claimedOrg: String = "",
     /** Risk climbing turn over turn — a scam escalates on purpose. */
     val escalating: Boolean = false,
+    /**
+     * The LiveKit room this call is actually happening in. Empty = our own
+     * convention (`intercept-<session id>`, the room the app asks for). A
+     * forwarded call is NOT there: the SIP dispatch rule names it after the
+     * caller, so watching or joining has to use this value.
+     */
+    val room: String = "",
 )
 
 data class LiveKitToken(val url: String, val room: String, val token: String)

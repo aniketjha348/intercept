@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.telecom.Call
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -52,13 +51,12 @@ import com.intercept.presentation.theme.Room
 import com.intercept.presentation.theme.RoomInk
 import com.intercept.presentation.theme.RoomMuted
 import com.intercept.presentation.theme.RoomRaised
-import com.intercept.service.AutoScreenService
 
 /**
- * On-screen call controls. As the default Phone app, INTERCEPT owns the
- * in-call UI — without this, outgoing calls and contact calls would have no
- * screen at all. Auto-screened scam calls run headless instead (see
- * AutoScreenService) with hangup available from the alert notification.
+ * On-screen call controls. As the default Phone app, INTERCEPT owns the in-call
+ * UI — without this, incoming, outgoing and contact calls would have no screen
+ * at all. It is controls only: the app never answers a call by itself and never
+ * plays AI audio into one (see InterceptInCallService for why that cannot work).
  */
 class CallActiveActivity : ComponentActivity() {
 
@@ -77,7 +75,6 @@ class CallActiveActivity : ComponentActivity() {
     private var number by mutableStateOf("Call")
     private var stateText by mutableStateOf("")
     private var speaker by mutableStateOf(false)
-    private var screening by mutableStateOf(false)
 
     private val ticker = object : Runnable {
         override fun run() {
@@ -103,15 +100,6 @@ class CallActiveActivity : ComponentActivity() {
         super.onPause()
     }
 
-    private fun screenCurrentCall() {
-        AutoScreenService.screenCall(this, number)
-        Toast.makeText(
-            this,
-            "AI screening in background — see Reports after the call.",
-            Toast.LENGTH_LONG
-        ).show()
-    }
-
     private fun refresh() {
         number = InterceptInCallService.currentNumber() ?: "Call"
         stateText = when (InterceptInCallService.currentState()) {
@@ -123,7 +111,6 @@ class CallActiveActivity : ComponentActivity() {
             else -> ""
         }
         speaker = InterceptInCallService.speakerOn()
-        screening = AutoScreenService.activeCallSession != null
         if (!InterceptInCallService.hasCall() && !isFinishing) {
             try {
                 finish()
@@ -186,20 +173,6 @@ class CallActiveActivity : ComponentActivity() {
                             Text(stateText, style = MaterialTheme.typography.bodyMedium, color = RoomMuted)
                         }
                     }
-                    if (screening) {
-                        Spacer(Modifier.height(14.dp))
-                        Row(
-                            verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            StatusDot(RiskLowOnRoom, size = 8.dp, modifier = Modifier.padding(top = 6.dp))
-                            Text(
-                                "AI is screening this call — risky callers are cut automatically.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = RiskLowOnRoom,
-                            )
-                        }
-                    }
                     Spacer(Modifier.height(28.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedButton(
@@ -228,12 +201,6 @@ class CallActiveActivity : ComponentActivity() {
                             modifier = Modifier.weight(1f)
                         ) { Text("Hang up") }
                     }
-                    Spacer(Modifier.height(10.dp))
-                    OutlinedButton(
-                        onClick = { screenCurrentCall() },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = RoomInk),
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("Screen this call with AI") }
                 }
             }
         }

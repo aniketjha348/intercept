@@ -25,6 +25,20 @@ Worker registers as `intercept-agent`. Keep it running on the demo laptop
 `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `GOOGLE_API_KEY`
 (+ optional `LIVE_MODEL`, `INTERCEPT_API`).
 
+On startup it logs `agent joining intercept-… for caller …` — if you never see
+that line while a call is ringing, the agent is not the problem, the call never
+reached LiveKit (forwarding not armed).
+
+Two things that silently break phone audio:
+
+- **The realtime import.** Python uses `livekit.plugins.google.realtime`; the
+  `google.beta.realtime` path is the Node layout. `agent.py` tries both, because
+  the wrong one raises *inside the job* — the phone connects and nobody speaks.
+- **Noise suppression.** Phone audio is 8 kHz narrowband. `room_options()` feeds
+  LiveKit Cloud's Krisp NC (`livekit-plugins-noise-cancellation`, already in
+  `requirements-agent.txt`) to the model. Do not also switch noise cancellation
+  on in the SIP trunk: stacking two models makes the line worse, not cleaner.
+
 ## Wire the number (dashboard, once)
 
 Telephony → Phone Numbers → your number → Assign dispatch rule
@@ -42,6 +56,17 @@ Full JSON + troubleshooting: [`docs/deployment/LiveKitSIP.md`](../docs/deploymen
 2. Say: *"I am calling from your bank. Give me the OTP immediately."*
 3. Terminal shows `RISK: CRITICAL … [AUTHORITY_BANK, OTP_REQUEST, …]` + 🚨.
 4. Say it in Hindi — detection + reply follow the language automatically.
+
+## Verify the chain before you demo
+
+```powershell
+python ../scripts/e2e_livekit.py              # trunk, rule, number, token, worker deps
+python ../scripts/e2e_livekit.py --simulate   # dispatch THIS worker into a test room and prove it joins
+python ../scripts/e2e_livekit.py --watch 120  # dial the number while it watches LiveKit
+```
+
+`--simulate` is the fastest way to tell "the worker is not running" apart from
+"the call never reached LiveKit" — it exits non-zero on any failure.
 
 ## If AI doesn't answer
 

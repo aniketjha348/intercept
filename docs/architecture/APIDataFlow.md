@@ -167,19 +167,26 @@ val response = CallResponse.Builder()
 respondToCall(callDetails, response)
 ```
 
-#### Step 3: Call Answering
+#### Step 3: Call Routing (no on-device answering)
+
+A store app cannot inject audio into a cellular uplink, so the app never answers a
+call to screen it — doing that only played AI audio out of the owner's own
+eardrum and the caller heard a screech. The one path that reaches the caller is
+carrier forwarding:
+
 ```kotlin
-// InterceptInCallService.kt
-private fun maybeAutoAnswer(call: Call): Boolean {
-    // Immediate answer - no delay!
-    call.answer(0)  // Answer on speaker
-    setAudioRoute(CallAudioState.ROUTE_SPEAKER)
-    
-    // Start AI screening
-    AutoScreenService.screenCall(applicationContext, number)
-    return true
+// InterceptScreeningService.kt
+if (forwarding && unknown) {
+    callResponse.setDisallowCall(true).setRejectCall(true)   // network forwards it
+    respondToCall(callDetails, response)
+    // carrier → LiveKit SIP room → intercept-agent answers as the other party
+    return
 }
+// otherwise the call simply rings; the owner is told AI answering is off
 ```
+
+`InterceptInCallService` only ever shows the in-call controls (and unmutes
+`STREAM_VOICE_CALL`, which an older build could have left muted).
 
 #### Step 4: STT Processing
 ```kotlin
@@ -353,34 +360,34 @@ var setupDone: Boolean           // Setup completed
 var autoCalls: Boolean           // Auto-answer enabled
 var autoSms: Boolean             // Auto-SMS enabled
 var ttsEnabled: Boolean          // Voice responses enabled
-var liveVoice: Boolean           // Realtime voice mode
 
 // Runtime state (not persistent)
 var pendingIncomingCaller: String?    // Current call number
 var lastSessionId: String?          // Last AI session
 val sessionCallers: Map<String, String>  // Call ID → Number
-
-// AutoScreenService companion object (static)
-@Volatile var activeCallSession: String? = null
-@Volatile var activeCallNumber: String? = null
+var watchOnlySid: String?           // Watching someone else's live call
 ```
 
 ### State Flow During Call
 
 ```
-Call Ringing → onCallAdded() → maybeAutoAnswer()
+Call Ringing → InterceptScreeningService.onScreenCall()
                     │
-                    ▼
-            [Answer] + [Screen] → activeCallSession = "sess_123"
+        unknown + forwarding armed?
                     │
-                    ▼
-            AI Analysis Loop (STT → API → TTS)
-                    │
-                    ▼
-            [User Override] OR [AI Terminate]
-                    │
-                    ▼
-         finishCall() → activeCallSession = null
+        ┌───────────┴────────────┐
+       yes                       no
+        │                         │
+   DECLINE → carrier forwards   allow → rings on the phone
+        │
+        ▼
+   LiveKit SIP room + intercept-agent → /calls/inbound → session
+        │
+        ▼
+   agent posts caller turns → /analyze/text + /calls/{sid}/transcript
+        │
+        ▼
+   app may watch (muted) or join (mic) the SAME room via /livekit/token
 ```
 
 ---

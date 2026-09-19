@@ -7,23 +7,23 @@ import android.content.Intent
 import android.os.Build
 import android.telecom.Call
 import android.telecom.CallScreeningService
-import android.telecom.TelecomManager
 import androidx.core.app.NotificationCompat
 import com.intercept.MainActivity
 import com.intercept.appContainer
 
 /**
- * Channel Gateway on-device (§2): unknown callers ring through with a one-tap
- * "let the AI screen this" prompt when auto-answer is off, and are handed to
- * InterceptInCallService when it is on.
+ * The routing decision for every incoming call, and the only place a call can
+ * be sent to the AI.
  *
- * Otherwise the call is never disallowed on purpose: the tap-to-screen flow
- * needs the call still alive for the user to answer. Full auto-answer requires
- * BOTH the ROLE_CALL_SCREENING and the ROLE_DIALER role.
+ * There is exactly one path that lets the caller hear Intercept: carrier
+ * forwarding is armed, so the unknown call is DECLINED here, the network hands
+ * it to our LiveKit number, and the cloud agent answers as the other party.
  *
- * The one exception is carrier forwarding: when it is armed, an unknown call is
- * DECLINED so the network forwards it to our number and the cloud AI answers as
- * the other party — the only way the caller ever hears the AI.
+ * Everything else rings normally. Nothing is ever answered by the app: on-device
+ * answering could only play audio out of the owner's own earpiece (a store app
+ * cannot write into a cellular uplink), which is what used to reach callers as a
+ * screech. When forwarding is NOT armed but the owner asked for automatic
+ * protection, we say so once instead of silently doing nothing.
  */
 class InterceptScreeningService : CallScreeningService() {
 
@@ -41,15 +41,6 @@ class InterceptScreeningService : CallScreeningService() {
             return
         }
 
-        // Auto-answer is only real when we hold the dialer role. Without it
-        // InterceptInCallService never fires, so claiming the auto path left the
-        // call ringing with no auto-answer AND no tap-to-screen prompt — the one
-        // outcome where protection silently does nothing.
-        val isDialer = try {
-            getSystemService(TelecomManager::class.java)?.defaultDialerPackage == packageName
-        } catch (_: Exception) {
-            false
-        }
         // Contact lookup is permission-backed; if it fails we must not guess.
         // "not unknown" keeps a contact ringing instead of forwarding it.
         val unknown = try {
@@ -57,16 +48,11 @@ class InterceptScreeningService : CallScreeningService() {
         } catch (_: Exception) {
             false
         }
-        val shouldAutoAnswer = try {
-            container.setupDone && container.autoCalls && isDialer && unknown
-        } catch (_: Exception) {
-            false
-        }
 
         // Carrier forwarding armed: DECLINE the call so the network forwards it
         // to our number, where the AI answers as the other party. This is the
-        // only path where the caller hears the AI — the on-device paths below
-        // cannot speak into a live cellular call.
+        // only path where the caller ever hears the AI, because no store app can
+        // speak into a live cellular call.
         val forwarding = try {
             container.forwardingOn
         } catch (_: Exception) {
@@ -84,21 +70,23 @@ class InterceptScreeningService : CallScreeningService() {
             return
         }
 
-        // Either way the call is allowed through. (No allow-flag exists: a
-        // response WITHOUT disallow/reject IS allow.)
+        // Otherwise the call is allowed through and rings normally. (No
+        // allow-flag exists: a response WITHOUT disallow/reject IS allow.)
         val response = CallResponse.Builder()
             .setSkipCallLog(false)
             .setSkipNotification(false)
             .build()
         respondToCall(callDetails, response)
 
-        if (shouldAutoAnswer) {
-            // InterceptInCallService detects this call and answers on speaker.
-            return
+        // Automatic protection was switched on, but without carrier forwarding
+        // there is no way for a store app to speak to the caller. Say so once
+        // rather than let the owner believe the AI is screening this call.
+        val wantsAi = try {
+            container.autoCalls
+        } catch (_: Exception) {
+            false
         }
-
-        container.pendingIncomingCaller = number
-        showScreeningNotification(number)
+        if (unknown && wantsAi) showForwardingNeededNotification(number)
     }
 
     /** The call is on its way to the cloud AI — tell the owner why it stopped ringing. */
@@ -127,7 +115,8 @@ class InterceptScreeningService : CallScreeningService() {
         nm.notify(number.hashCode(), notification)
     }
 
-    private fun showScreeningNotification(number: String) {
+    /** The AI could not take this call because forwarding is off — ask once. */
+    private fun showForwardingNeededNotification(number: String) {
         val channelId = "intercept_screening"
         val nm = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -136,7 +125,6 @@ class InterceptScreeningService : CallScreeningService() {
             )
         }
         val intent = Intent(this, MainActivity::class.java)
-            .putExtra(MainActivity.EXTRA_INCOMING, true)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val pi = PendingIntent.getActivity(
             this, 0, intent,
@@ -144,11 +132,16 @@ class InterceptScreeningService : CallScreeningService() {
         )
         val notification = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle("Unknown caller silenced: $number")
-            .setContentText("Tap to let INTERCEPT screen this call.")
+            .setContentTitle("Unknown caller: $number")
+            .setContentText("Turn on AI answering so Intercept can take strangers for you.")
+            .setStyle(
+                NotificationCompat.BigTextStyle().bigText(
+                    "Intercept can only speak to a caller when the call is handed to " +
+                        "the cloud AI — turn on AI answering (carrier forwarding) from Home."
+                )
+            )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
-            .setFullScreenIntent(pi, true)
             .setContentIntent(pi)
             .setAutoCancel(true)
             .build()

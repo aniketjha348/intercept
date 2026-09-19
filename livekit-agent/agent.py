@@ -19,6 +19,7 @@ individual-rule room after the CALLER'S NUMBER, not our session.
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import os
 import urllib.error
@@ -30,9 +31,27 @@ from livekit import agents
 from livekit.agents import JobContext, WorkerOptions, cli, voice
 from livekit.plugins import google
 
+# room_io carries the room input options (noise suppression). A build without it
+# must still import: this module failing to load means the worker never
+# registers, and the call rings out with nobody answering.
+try:
+    from livekit.agents import room_io
+except ImportError:  # pragma: no cover - older agents build
+    room_io = None  # type: ignore[assignment]
+
 load_dotenv(".env.local")
 
 logger = logging.getLogger("intercept-agent")
+
+# The Google plugin's realtime class left its `beta` namespace when the Live API
+# left beta — Python is now `livekit.plugins.google.realtime`, while `beta.` is
+# the Node layout. Importing the wrong one raises INSIDE the job, which to the
+# caller looks exactly like "the agent never answered": the phone connects and
+# nobody speaks. Try both layouts instead of betting on the installed version.
+try:  # livekit-plugins-google >= 1.5
+    from livekit.plugins.google.realtime import RealtimeModel as GeminiLive
+except ImportError:  # pragma: no cover — older plugin layout
+    from livekit.plugins.google.beta.realtime import RealtimeModel as GeminiLive
 
 BACKEND = os.environ.get(
     "INTERCEPT_API",
@@ -43,6 +62,54 @@ MODEL = os.environ.get(
 # Native-audio voice. Aoede is the most conversational of the prebuilt set;
 # override per deployment (Kore, Leda, Charon, Fenrir …).
 VOICE = os.environ.get("LIVE_VOICE", "Aoede")
+
+# Rooms our own backend/app creates are `intercept-<session id>`.
+ROOM_PREFIX = "intercept-"
+
+
+def room_options():
+    """Room I/O tuned for a phone line, or None when this build cannot take it.
+
+    Telephony audio is 8 kHz narrowband with line hiss and DTX comfort noise, and
+    a realtime AUDIO model feeds straight on whatever arrives — which is where a
+    "the caller sounds like static" complaint comes from. LiveKit Cloud's noise
+    suppression (Krisp NC, included in the plan) is what agents are meant to run
+    on SIP legs; apply it here and NOT on the trunk as well, or the two models
+    stack and the audio gets worse, not better.
+
+    Every step is optional on purpose: a laptop that has not installed the plugin,
+    or an older SDK, must still start the agent — this process not starting is the
+    difference between "the AI answered" and "the call rang out".
+    """
+    if room_io is None:
+        return None
+    try:
+        from livekit.plugins import noise_cancellation
+
+        return room_io.RoomOptions(
+            audio_input=room_io.AudioInputOptions(
+                noise_cancellation=noise_cancellation.NC(),
+            ),
+        )
+    except Exception as exc:
+        logger.warning("noise suppression unavailable (%s) — running raw audio", exc)
+        try:
+            return room_io.RoomOptions()
+        except Exception:
+            return None
+
+
+def _start_kwargs() -> dict:
+    """`room_options` only exists on newer agents builds; probe, never assume.
+    A wrong kwarg to session.start() aborts the job before it says a word."""
+    try:
+        params = inspect.signature(voice.AgentSession.start).parameters
+    except (TypeError, ValueError):
+        return {}
+    if "room_options" not in params:
+        return {}
+    opts = room_options()
+    return {"room_options": opts} if opts is not None else {}
 
 
 class CallState:
@@ -239,25 +306,36 @@ async def entrypoint(ctx: JobContext):
     meta = job_metadata(ctx)
     caller = str(meta.get("caller") or "") or caller_number(ctx)
     owner_name = str(meta.get("owner_name") or meta.get("owner") or "")
+    room_name = getattr(ctx.room, "name", "") or ""
+    # A room WE brought the agent into is named `intercept-<session id>` (the app
+    # asks the backend for exactly that room), while a SIP rule names the room
+    # after the CALLER. Offering the suffix as a candidate session id is safe on
+    # both paths: the backend reuses it only when that session exists and is
+    # still active, so a phone number in the room name simply misses.
+    #
+    # Without this, a call the app itself delivered into LiveKit posts its turns
+    # into a SECOND session — the AI speaks, and the app's screen stays empty.
+    candidate_sid = (room_name[len(ROOM_PREFIX):]
+                     if room_name.startswith(ROOM_PREFIX) else None)
     sid = resolve_session(
         caller,
-        session_id=meta.get("session_id"),
+        session_id=meta.get("session_id") or candidate_sid,
         owner_name=owner_name,
         # Prefer the dialled DID from the trunk; metadata can override for tests.
         dialed=str(meta.get("dialed") or "") or dialed_number(ctx),
-        room=getattr(ctx.room, "name", "") or "",
+        room=room_name,
     )
     if not sid:
-        # Backend unreachable: keep the old room-name convention as a last
-        # resort so a phone-created session can still catch the turns.
-        name = getattr(ctx.room, "name", "") or ""
-        sid = name[len("intercept-"):] if name.startswith("intercept-") else None
+        # Backend unreachable: fall back to the room-name convention so the app's
+        # own session still catches the turns (a SIP room name simply won't
+        # match any session, which is fine — the report is then session-less).
+        sid = candidate_sid
     state = CallState(sid)
 
     session = voice.AgentSession(
         # Native audio (speech in, speech out) — the same shape as ChatGPT's
         # advanced voice: no text round-trip, so tone and barge-in survive.
-        llm=google.beta.realtime.RealtimeModel(
+        llm=GeminiLive(
             model=MODEL,
             voice=VOICE,
         ),
@@ -286,7 +364,19 @@ async def entrypoint(ctx: JobContext):
             print("\n🛑 CRITICAL — delivering the closing line", flush=True)
             asyncio.create_task(session.generate_reply(instructions=CRITICAL_CLOSING))
 
-    await session.start(room=ctx.room, agent=InterceptAgent(owner_name, caller))
+    # Log the room we actually landed in: with SIP this is the easiest way to see
+    # that LiveKit engaged at all (and which room the app must join to watch).
+    logger.info(
+        "agent joining %s for caller %s (session %s)",
+        getattr(ctx.room, "name", "?"),
+        caller,
+        sid or "unlinked",
+    )
+    await session.start(
+        room=ctx.room,
+        agent=InterceptAgent(owner_name, caller),
+        **_start_kwargs(),
+    )
     who = owner_name.strip() or "the owner of this number"
     await session.generate_reply(
         instructions=(

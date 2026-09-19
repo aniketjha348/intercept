@@ -31,13 +31,14 @@ class ForwardNumber(BaseModel):
 
 
 def _codes(number: str) -> dict:
-    """Standard GSM USSD codes the Indian carriers (Airtel/Jio/Vi) accept:
-    *67 = forward when busy (a declined call reads as busy — our path),
-    *61 = forward when not answered; ##xx# clears each."""
+    """Standard GSM MMI codes the Indian carriers (Airtel/Jio/Vi) accept:
+    **67 = register forward-when-busy (a declined call reads as busy — our
+    path), **61 = forward-when-not-answered; ##xx# clears each. The `**` is
+    required — the single-star form is not a valid registration code."""
     return {
-        "busy_activate": f"*67*{number}#",
+        "busy_activate": f"**67*{number}#",
         "busy_deactivate": "##67#",
-        "noanswer_activate": f"*61*{number}#",
+        "noanswer_activate": f"**61*{number}#",
         "noanswer_deactivate": "##61#",
     }
 

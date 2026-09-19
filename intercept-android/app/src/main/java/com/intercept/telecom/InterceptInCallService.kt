@@ -1,19 +1,22 @@
 package com.intercept.telecom
 
-import android.os.Handler
-import android.os.Looper
+import android.media.AudioManager
 import android.telecom.Call
 import android.telecom.CallAudioState
 import android.telecom.InCallService
-import com.intercept.appContainer
-import com.intercept.service.AutoScreenService
 
 /**
- * Production real-call path: when INTERCEPT is the default Phone app,
- * ringing cellular calls land here. answer() picks up on speakerphone so the
- * guardian voice (TTS) reaches the caller and the mic/STT hears them back.
- * Needs the default-dialer role; audio couples through the speaker (honest v1 —
- * Pixel-style deep in-call audio needs system privileges no store app gets).
+ * Production real-call path: when INTERCEPT is the default Phone app, ringing
+ * cellular calls land here — and that is all this service does.
+ *
+ * It deliberately never answers a call. A store app cannot put audio INTO a
+ * cellular uplink, so the old "answer and speak the guardian voice" path could
+ * only ever blast whatever it played out of the owner's own earpiece at max
+ * volume while the open mic fed that same audio back up the line — the caller
+ * heard a screech, not a voice. Calls that must reach the AI are DECLINED by
+ * InterceptScreeningService and forwarded by the carrier to LiveKit, where the
+ * cloud agent answers as the other party. This service only shows the in-call
+ * UI so the owner can talk, hang up, or take over normally.
  */
 class InterceptInCallService : InCallService() {
 
@@ -23,64 +26,29 @@ class InterceptInCallService : InCallService() {
         super.onCallAdded(call)
         calls.add(call)
         instance = this
-        // Auto-screened calls run headless; every other call (outgoing, saved
-        // contacts, toggles off) gets on-screen controls — as the default Phone
-        // app we own the in-call UI, so we must always show something.
-        if (!maybeAutoAnswer(call)) {
-            try {
-                CallActiveActivity.show(this)
-            } catch (_: Exception) {
-            }
+        restoreVoiceStream()
+        // We own the in-call UI (default Phone app), so every call — incoming,
+        // outgoing, contact or stranger — gets on-screen controls.
+        try {
+            CallActiveActivity.show(this)
+        } catch (_: Exception) {
         }
     }
 
     /**
-     * Zero-tap path: after the one-time setup, unknown callers are answered
-     * automatically and handed to the headless AI screener. Saved contacts
-     * and disabled toggles always ring through normally. Returns true when
-     * the auto path was taken.
+     * Heal the one leftover of the removed on-device screening. It muted
+     * STREAM_VOICE_CALL and left the stream at full volume; that mute is a
+     * device-wide audio setting, so it survives the app being killed mid-call —
+     * after which the owner hears NOTHING on every later call. Unmute here,
+     * where we know a call is genuinely coming through.
      */
-    private fun maybeAutoAnswer(call: Call): Boolean {
-        val number = try {
-            call.details?.handle?.schemeSpecificPart ?: "Unknown"
+    private fun restoreVoiceStream() {
+        try {
+            val am = getSystemService(AudioManager::class.java) ?: return
+            am.adjustStreamVolume(
+                AudioManager.STREAM_VOICE_CALL, AudioManager.ADJUST_UNMUTE, 0
+            )
         } catch (_: Exception) {
-            "Unknown"
-        }
-        // NOTE: setupDone is deliberately NOT checked — it only means the
-        // wizard finished. The toggles are the real intent: a user blocked at
-        // 5/6 (e.g. dialer battle) must still get every protection they DID
-        // switch on the moment the OS delivers the call.
-        val auto = try {
-            val container = applicationContext.appContainer()
-            // Forwarding armed: the call is being handed to the carrier, so we
-            // must NOT answer on-device and hijack the forward.
-            !container.forwardingOn && container.autoCalls &&
-                ContactHelper.isUnknown(this, number)
-        } catch (_: Exception) {
-            false
-        }
-        if (!auto) return false
-        // Only claim the call when we actually answered it. Previously this
-        // returned true even when it did nothing (call no longer ringing, or not
-        // in our set) — and onCallAdded reads true as "don't show the in-call
-        // UI", so the user was left holding a connected call with no controls.
-        if (call.state != Call.STATE_RINGING || !calls.contains(call)) return false
-        // Answer immediately - no delay! The previous 1.5s delay caused race conditions
-        // where the system would timeout or user would interact before answer completed.
-        return try {
-            call.answer(0)
-            // Route to earpiece during AI screening — only the caller (on the
-            // phone line) should hear the guardian voice, NOT the user holding
-            // the phone. Speaker is for user-initiated takeover only.
-            setAudioRoute(CallAudioState.ROUTE_EARPIECE)
-            try {
-                applicationContext.appContainer().pendingIncomingCaller = number
-            } catch (_: Exception) {
-            }
-            AutoScreenService.screenCall(applicationContext, number)
-            true
-        } catch (_: Exception) {
-            false
         }
     }
 
@@ -120,7 +88,7 @@ class InterceptInCallService : InCallService() {
             false
         }
 
-        /** Answer on earpiece (AI screens silently). User taps speaker to take over. */
+        /** Answer on earpiece. Answering is always the owner's own tap. */
         fun answer(): Boolean {
             val svc = instance ?: return false
             val call = svc.target() ?: return false

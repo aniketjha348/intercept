@@ -12,48 +12,36 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.intercept.MainActivity
 import com.intercept.appContainer
-import com.intercept.speech.CallerStt
-import com.intercept.telecom.InterceptInCallService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Headless auto-protect engine. After the one-time setup, everything here runs
- * with zero taps: stranger SMS are scanned silently (warning only when risky),
- * unknown calls are answered on speaker and screened by the AI until they end
- * or turn CRITICAL (auto-hangup + security report).
+ * Headless auto-protect engine, messages only. After the one-time setup,
+ * stranger SMS are scanned silently and only a genuinely risky one raises an
+ * alert.
+ *
+ * Calls are deliberately NOT handled here. Screening a call on device meant
+ * answering it and playing the AI voice out of the owner's own earpiece — audio
+ * a cellular uplink cannot carry, so the caller heard a screech and the AI never
+ * really spoke to them. Unknown calls now reach the cloud agent through carrier
+ * forwarding (see InterceptScreeningService), where the caller really does hear
+ * the AI.
  */
 class AutoScreenService : Service() {
 
     companion object {
         private const val ACTION_SMS = "com.intercept.action.SCREEN_SMS"
-        private const val ACTION_CALL = "com.intercept.action.SCREEN_CALL"
         private const val CHANNEL_ALERT = "intercept_alert"
         private const val SMS_RISK_THRESHOLD = 25
-
-        @Volatile var activeCallSession: String? = null
-            private set
-        @Volatile var activeCallNumber: String? = null
-            private set
 
         fun screenSms(context: Context, sender: String, body: String) {
             val intent = Intent(context, AutoScreenService::class.java)
                 .setAction(ACTION_SMS)
                 .putExtra("sender", sender)
                 .putExtra("body", body)
-            run(intent, context)
-        }
-
-        fun screenCall(context: Context, number: String) {
-            val intent = Intent(context, AutoScreenService::class.java)
-                .setAction(ACTION_CALL)
-                .putExtra("number", number)
             run(intent, context)
         }
 
@@ -70,8 +58,6 @@ class AutoScreenService : Service() {
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var stt: CallerStt? = null
-    private val callDone = AtomicBoolean(false)
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -102,18 +88,12 @@ class AutoScreenService : Service() {
                     try {
                         handleSms(sender, body)
                     } finally {
-                        if (activeCallSession == null) {
-                            releaseOngoing()
-                            stopSelf(startId)
-                        }
+                        releaseOngoing()
+                        stopSelf(startId)
                     }
                 }
             }
-            ACTION_CALL -> {
-                val number = intent.getStringExtra("number").orEmpty()
-                scope.launch { handleCall(number, startId) }
-            }
-            else -> if (activeCallSession == null) {
+            else -> {
                 releaseOngoing()
                 stopSelf(startId)
             }
@@ -144,155 +124,7 @@ class AutoScreenService : Service() {
         }
     }
 
-    // ---- Calls: answer already done by InCallService; run the AI loop ----
-
-    private suspend fun handleCall(number: String, startId: Int) {
-        if (activeCallSession != null) return // one screened call at a time
-        callDone.set(false)
-        val container = try {
-            appContainer()
-        } catch (_: Exception) {
-            bailOut(startId)
-            return
-        }
-        val sid = try {
-            container.repo.startCall(number.ifEmpty { "Unknown" }, container.ownerName)
-        } catch (_: Exception) {
-            bailOut(startId)
-            return
-        }
-        activeCallSession = sid
-        activeCallNumber = number
-        container.lastSessionId = sid
-        container.sessionCallers[sid] = number
-        AutoProtectNotification.update(this, "Screening call from $number…", sid)
-        try {
-            container.audio.enter()
-        } catch (_: Exception) {
-        }
-        // Audio mode and local routing for the whole call belong to
-        // InCallAudio (entered above); it saves and restores them itself.
-        try {
-            container.tts.setCallMode(true)
-        } catch (_: Exception) {
-        }
-        try {
-            container.speakBest(
-                sid,
-                "Namaste! Main INTERCEPT hoon, is call ki suraksha jaanch kar raha hoon. " +
-                    "Kripya apna naam aur kaam batayein. " +
-                    "Hello, this call is being screened. Please introduce yourself.",
-                forCall = true
-            )
-        } catch (_: Exception) {
-        }
-        withContext(Dispatchers.Main) { startEars(sid) }
-        // Wait until the caller hangs up or the AI terminates.
-        while (!callDone.get() && InterceptInCallService.hasCall()) {
-            delay(1500)
-        }
-        finishCall(sid, terminated = callDone.get())
-        releaseOngoing()
-        stopSelf(startId)
-    }
-
-    private fun startEars(sid: String) {
-        val container = try {
-            appContainer()
-        } catch (_: Exception) {
-            return
-        }
-        val ears = try {
-            container.callerStt()
-        } catch (_: Exception) {
-            return
-        }
-        if (!ears.isAvailable()) return
-        stt = ears
-        ears.start(
-            onPartialText = {},
-            onFinalText = { text ->
-                scope.launch {
-                    try {
-                        // Barge-in: caller spoke → cut our voice like an interrupted human.
-                        container.stopVoice()
-                        val turn = container.repo.sendCallerTurn(sid, text)
-                        if (!turn.reply.isBlank()) {
-                            container.speakBest(sid, turn.reply, forCall = true)
-                        }
-                        if (turn.mustTerminate && callDone.compareAndSet(false, true)) {
-                            finishCall(sid, terminated = true)
-                        }
-                    } catch (_: Exception) {
-                    }
-                }
-            }
-        )
-    }
-
-    private suspend fun finishCall(sid: String, terminated: Boolean) {
-        if (!callDone.compareAndSet(false, true) && !terminated) return
-        val container = try {
-            appContainer()
-        } catch (_: Exception) {
-            null
-        }
-        try {
-            stt?.stop()
-        } catch (_: Exception) {
-        }
-        stt = null
-        if (container != null) {
-            try {
-                container.stopVoice()
-            } catch (_: Exception) {
-            }
-        }
-        try {
-            InterceptInCallService.hangup()
-        } catch (_: Exception) {
-        }
-        var level = ""
-        var risk = 0
-        if (container != null) {
-            try {
-                val report = container.repo.endCall(sid)
-                level = report.level
-                risk = report.risk
-            } catch (_: Exception) {
-            }
-            try {
-                container.audio.exit()
-            } catch (_: Exception) {
-            }
-            try {
-                container.tts.setCallMode(false)
-            } catch (_: Exception) {
-            }
-        }
-        activeCallSession = null
-        activeCallNumber = null
-        AutoProtectNotification.update(this, AutoProtectNotification.IDLE_TEXT)
-        if (terminated || risk >= 50) {
-            alert(
-                id = sid.hashCode(),
-                title = if (terminated) "🛡 Scam call stopped — $level $risk"
-                else "Call screened — $level $risk",
-                text = "Open INTERCEPT → Reports for the full security report."
-            )
-        }
-    }
-
     // ---- Notifications ----
-
-    /**
-     * Nothing to screen after all: give the ongoing line back and stand down,
-     * instead of holding the foreground (and its notification) forever.
-     */
-    private fun bailOut(startId: Int) {
-        releaseOngoing()
-        stopSelf(startId)
-    }
 
     /**
      * Leave the foreground without taking the shared notification down.
@@ -341,9 +173,6 @@ class AutoScreenService : Service() {
     private fun mainIntent(): PendingIntent {
         val intent = Intent(this, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        // Screening live right now? Tap jumps straight to the transcript so
-        // the user can read along, take over, or cut the call themselves.
-        activeCallSession?.let { intent.putExtra(MainActivity.EXTRA_WATCH_SID, it) }
         return PendingIntent.getActivity(
             this, 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -351,10 +180,6 @@ class AutoScreenService : Service() {
     }
 
     override fun onDestroy() {
-        try {
-            stt?.stop()
-        } catch (_: Exception) {
-        }
         scope.cancel()
         super.onDestroy()
     }

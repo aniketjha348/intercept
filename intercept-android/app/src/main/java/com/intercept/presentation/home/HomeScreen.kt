@@ -219,6 +219,9 @@ fun HomeScreen(nav: NavController, container: AppContainer) {
                         onClick = {
                             // Silent watch: the agent keeps the call, we only look.
                             container.watchOnlySid = s.sessionId
+                            // The room the call is actually in (SIP rooms are not
+                            // our own convention), so watching hears the agent.
+                            container.watchOnlyRoom = s.room
                             container.sessionCallers[s.sessionId] = s.caller
                             nav.navigate(Routes.live(s.sessionId))
                         },

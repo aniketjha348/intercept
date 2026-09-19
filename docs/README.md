@@ -124,7 +124,7 @@ graph TD
 - Handle application-wide initialization
 
 ### 2. InterceptInCallService.kt
-**Default Dialer Service** - Answers calls when app is set as Phone
+**Default Dialer Service** - Shows in-call controls when app is set as Phone
 
 ```kotlin
 class InterceptInCallService : InCallService()
@@ -132,21 +132,26 @@ class InterceptInCallService : InCallService()
 
 **Flow:**
 1. `onCallAdded()` - Detect incoming call
-2. `maybeAutoAnswer()` - Check if should auto-answer
-3. `answer(0)` - Answer on speaker
-4. Forward to `AutoScreenService.screenCall()`
+2. `restoreVoiceStream()` - undo a stale `STREAM_VOICE_CALL` mute
+3. Show the in-call controls — it never answers by itself
+
+Unknown calls reach the AI **only** through carrier forwarding → LiveKit. A store
+app cannot inject audio into a cellular call, so there is deliberately no
+answer-and-screen path here (see `docs/deployment/LiveKitSIP.md`).
 
 ### 3. AutoScreenService.kt
-**Headless AI Engine** - Runs without UI
+**Headless auto-protect engine** - messages only, never calls
 
 ```kotlin
 class AutoScreenService : Service()
 ```
 
 **Key Methods:**
-- `handleCall()` - Main screening loop
-- `startEars()` - Start STT listening
-- `finishCall()` - End call and report
+- `screenSms()` - Scan a stranger message in the background
+
+Calls were removed from this service: screening one on device meant answering it
+and playing AI audio out of the owner's own earpiece, which is what used to reach
+callers as a screech. See `docs/deployment/LiveKitSIP.md`.
 
 ### 4. InterceptScreeningService.kt
 **Call Screening Gateway** - System-level call filter
@@ -198,16 +203,18 @@ http://intercept-backend-1446503107.ap-south-1.elb.amazonaws.com
  Device ID → /register → User ID → Stored locally
  ```
 
-2. **Call Screening Phase:**
+2. **AI Answering Phase (call forwarded to LiveKit):**
  ```
- Call Audio → STT (on device) → Transcript → /analyze → 
- Risk Score → Response Text → /speak → TTS → Speaker
+ Carrier forward → LiveKit SIP room → intercept-agent (Gemini native audio)
+                                    │
+        caller turn → POST /calls/{sid}/transcript + /analyze/text
  ```
+ A call that stays on the phone is read-only: the app transcribes it and shows
+ the risk, and never speaks into it.
 
 3. **State Persistence:**
  - `sessionCallers` - Maps call IDs to phone numbers
  - `lastSessionId` - Most recent AI session
- - `activeCallSession` - Currently screening call (static var)
 
 ---
 
@@ -452,11 +459,13 @@ if (BuildConfig.DEBUG) {
 **Root Cause:** Fixed in v0.4.4 - removed 1.5s delay
 **Solution:** Update to latest version
 
-#### "No audio during screening"
+#### "The caller hears noise instead of the AI"
 **Check:**
-1. Microphone permission granted
-2. Speaker volume up
-3. `liveVoice` or TTS enabled
+1. AI answering is armed (Home → "Let the AI answer my calls"): without carrier
+   forwarding the caller never reaches the cloud AI at all
+2. The agent worker is running and logged `agent joining intercept-…`
+3. `ASSISTANT_FORWARD_NUMBER` is set on the backend, or the owner has a DID
+   bound via `POST /assistant/forwarding`
 
 #### "Connect to backend fails"
 **Check:**

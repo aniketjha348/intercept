@@ -67,10 +67,9 @@ class CallerStt(context: Context, private val appLang: () -> String = { "auto" }
             recognizer?.destroy()
         } catch (_: Exception) {
         }
-        // The call's audio mode is owned by InCallAudio for the whole call
-        // (it enters before STT starts and exits after), so the recognizer
-        // must not touch it here — flipping it back on stop() would drop
-        // mid-screening routing.
+        // The audio mode belongs to the system for the duration of a real call,
+        // so the recognizer must not touch it — flipping it back on stop() would
+        // break call routing mid-screening.
         val active = try {
             SpeechRecognizer.createSpeechRecognizer(appContext)
         } catch (_: Exception) {

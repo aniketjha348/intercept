@@ -14,6 +14,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -23,11 +24,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import androidx.navigation.NavController
 import com.intercept.di.AppContainer
 import com.intercept.domain.model.Forwarding
@@ -40,6 +45,17 @@ import com.intercept.presentation.theme.Paper
 import com.intercept.presentation.theme.RiskCritical
 import com.intercept.presentation.theme.RiskLow
 import com.intercept.telecom.CallForwarding
+
+/**
+ * This deployment's own AI number — the LiveKit phone number the dispatch rule
+ * answers on.
+ *
+ * Baked in so setup is zero-touch: otherwise the owner must paste a DID the
+ * backend already knows, and a screen that says "not set up on the server yet"
+ * is the one step a live demo cannot absorb. Type a different number in the
+ * field below to override it.
+ */
+private const val DEFAULT_FORWARD_NUMBER = "+14843174128"
 
 /**
  * Turn an unknown call into a conversation the AI has on the owner's behalf.
@@ -57,12 +73,38 @@ fun ForwardingScreen(nav: NavController, container: AppContainer) {
     var armed by remember { mutableStateOf(container.forwardingOn) }
     var message by remember { mutableStateOf<String?>(null) }
     var failed by remember { mutableStateOf(false) }
+    var number by remember { mutableStateOf("") }
+    var binding by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-        val f = container.repo.forwarding()
+        var f = container.repo.forwarding()
+        // Zero-touch setup. Binding the number is a plain HTTP call with no
+        // carrier involvement, so it is safe to do silently; the USSD arming
+        // below still goes to the network and is done once, visibly.
+        if (!f.configured && DEFAULT_FORWARD_NUMBER.isNotBlank()) {
+            if (container.repo.bindForwarding(DEFAULT_FORWARD_NUMBER)) {
+                f = container.repo.forwarding()
+            }
+        }
         info = f
         if (f.configured) container.forwardNumber = f.number
         loading = false
+        // Arm it for the owner: dialing the carrier code needs this phone, and
+        // missing calls while setting it up is the whole problem we are solving.
+        if (f.configured && !armed) {
+            val ok = CallForwarding.activateWhenBusy(ctx, f.number)
+            if (ok) {
+                CallForwarding.activateWhenUnanswered(ctx, f.number)
+                armed = true
+                failed = false
+                container.forwardingOn = true
+                message = "Forwarding is on — unknown calls go to the AI now."
+            } else {
+                failed = true
+                message = "Allow phone permission, then tap Turn on AI answering."
+            }
+        }
     }
 
     Scaffold(
@@ -101,9 +143,49 @@ fun ForwardingScreen(nav: NavController, container: AppContainer) {
                 info == null -> Text("Checking…", color = Muted)
                 info?.configured != true -> {
                     Text(
-                        "AI answering is not set up on the server yet. Add " +
-                            "ASSISTANT_FORWARD_NUMBER on the backend, then come back.",
+                        "No AI number is set for you yet. Paste the number your " +
+                            "calls should go to (your telephony provider's DID, e.g. a " +
+                            "LiveKit phone number) and save it.",
                         style = MaterialTheme.typography.bodyMedium,
+                        color = Muted,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = number,
+                        onValueChange = { number = it },
+                        label = { Text("AI number (+919000000000)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                binding = true
+                                failed = false
+                                val ok = container.repo.bindForwarding(number)
+                                if (ok) {
+                                    val f = container.repo.forwarding()
+                                    info = f
+                                    if (f.configured) container.forwardNumber = f.number
+                                    message = "Saved. Now turn on AI answering below."
+                                } else {
+                                    failed = true
+                                    message = "Could not save — check the number (country code, no spaces)."
+                                }
+                                binding = false
+                            }
+                        },
+                        enabled = !binding && number.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text(if (binding) "Saving…" else "Save number") }
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "PS: don't have a number yet? Get one in your LiveKit Cloud " +
+                            "dashboard → Telephony → Phone numbers, then attach it to the " +
+                            "Intercept AI dispatch rule.",
+                        style = MaterialTheme.typography.bodySmall,
                         color = Muted,
                     )
                 }

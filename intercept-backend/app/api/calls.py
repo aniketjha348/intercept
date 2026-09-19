@@ -221,6 +221,11 @@ def live_sessions():
             "objective": last.likely_objective if last else "",
             "claimed_org": sess.memory.claimed_org,
             "escalating": sess.escalating,
+            # The room the call is really in. A forwarded call is answered in the
+            # SIP rule's room (named after the caller), so without this the app
+            # guesses `intercept-<id>`, joins an empty room, and the owner watches
+            # a transcript they cannot hear.
+            "room": sess.room,
         })
     return {"live": out}
 

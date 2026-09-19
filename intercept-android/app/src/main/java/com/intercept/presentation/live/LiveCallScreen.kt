@@ -76,7 +76,6 @@ import com.intercept.presentation.theme.RoomMuted
 import com.intercept.presentation.theme.RoomRaised
 import com.intercept.presentation.theme.RoomWire
 import com.intercept.presentation.theme.riskOnRoom
-import com.intercept.service.AutoScreenService
 import com.intercept.telecom.InterceptInCallService
 
 /**
@@ -101,10 +100,7 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
     val micLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) {
-            if (container.livekitTransport) vm.startLiveKitTransport()
-            else if (container.liveVoice) vm.startLiveVoice() else vm.startListening()
-        }
+        if (granted) vm.startLiveKitTransport()
     }
 
     fun withMic(action: () -> Unit) {
@@ -113,22 +109,28 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
         if (ok) action() else micLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
+    /**
+     * The mic control. In the room it mutes/unmutes this phone's mic; outside it
+     * joins the call's LiveKit room with the mic on. When the room is unreachable
+     * the ViewModel falls back to on-device recognition by itself.
+     */
     fun ensureMicThenListen() {
-        if (container.livekitTransport) {
-            if (s.lkTransport) vm.stopLiveKitTransport()
-            else withMic { vm.startLiveKitTransport() }
-            return
-        }
-        if (container.liveVoice) {
-            if (s.voiceLive) vm.stopLiveVoice()
-            else withMic { vm.startLiveVoice() }
+        if (s.lkTransport) {
+            vm.setMicEnabled(!s.listening)
             return
         }
         if (s.listening) {
             vm.stopListening()
             return
         }
-        withMic { vm.startListening() }
+        withMic { vm.startLiveKitTransport() }
+    }
+
+    /** Hand this call to the owner: mic live in the room, backend in human mode. */
+    fun joinLiveCall() {
+        vm.joinCall()
+        if (s.lkTransport) vm.setMicEnabled(true)
+        else withMic { vm.startLiveKitTransport() }
     }
 
     // Speaker path: user answered a real call on speaker (we are not the
@@ -139,12 +141,13 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
 
     LaunchedEffect(sid) {
         vm.connect()
-        // Watching the agent's own call: transcript only. Touching audio here
-        // would hijack a call that is not this device's to route.
-        if (container.watchOnlySid == sid) return@LaunchedEffect
-        // Service already driving this session? Just watch — no second mic/TTS.
-        if (AutoScreenService.activeCallSession == sid) return@LaunchedEffect
-        // Real telecom call up? Route audio + start ears automatically.
+        // Watching the agent's own call: join the room MUTED so the owner hears
+        // the agent without ever talking over it.
+        if (container.watchOnlySid == sid) {
+            vm.startWatching()
+            return@LaunchedEffect
+        }
+        // Real telecom call up? Start hearing and transcribing automatically.
         if (InterceptInCallService.hasCall()) {
             vm.beginRealScreening()
             ensureMicThenListen()
@@ -183,7 +186,7 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
                     StatusLine("Watching — the AI is handling this call", RiskLowOnRoom)
                 }
                 if (s.realCall) {
-                    StatusLine("Real call on speaker — AI is screening live", RoomMuted)
+                    StatusLine("Real call — AI reading it live on screen", RoomMuted)
                 }
                 if (speakerPath && !s.realCall) {
                     StatusLine(
@@ -191,10 +194,10 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
                         RiskSuspiciousOnRoom,
                     )
                 }
-                if (s.lkTransport) {
-                    StatusLine("Studio transport — mic live, agent on LiveKit", RiskCriticalOnRoom)
-                } else if (s.voiceLive) {
-                    StatusLine("Live voice — talking in real time", RiskCriticalOnRoom)
+                if (s.lkTransport && s.listening) {
+                    StatusLine("LiveKit — mic live, agent in the room", RiskCriticalOnRoom)
+                } else if (s.lkTransport) {
+                    StatusLine("LiveKit — hearing the agent, mic muted", RiskSuspiciousOnRoom)
                 } else if (s.listening) {
                     StatusLine(
                         "Listening…" + if (s.interim.isNotEmpty()) " “${s.interim}”" else "",
@@ -383,10 +386,7 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
                     // agent's room); stopping only ends the watch, never the call.
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
-                            onClick = {
-                                vm.joinCall()
-                                ensureMicThenListen()
-                            },
+                            onClick = { joinLiveCall() },
                             modifier = Modifier.weight(1f),
                         ) {
                             Text("Join call")

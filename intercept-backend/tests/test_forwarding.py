@@ -31,9 +31,12 @@ def test_forwarding_returns_number_and_gsm_codes():
         d = c.get("/assistant/forwarding").json()
         assert d["configured"] is True
         assert d["number"] == "+919000000000"
-        assert d["busy_activate"] == "*67*+919000000000#"
+        # `**` matters: GSM registers a forward with `**<code>*<number>#`. The
+        # single-star form is not an MMI code, so the dialer swallows it and
+        # forwarding silently stays off while the app claims it is on.
+        assert d["busy_activate"] == "**67*+919000000000#"
         assert d["busy_deactivate"] == "##67#"
-        assert d["noanswer_activate"] == "*61*+919000000000#"
+        assert d["noanswer_activate"] == "**61*+919000000000#"
         assert d["noanswer_deactivate"] == "##61#"
     finally:
         cfg.FORWARD_NUMBER = old
@@ -61,7 +64,7 @@ def test_per_user_number_overrides_shared_default():
                      headers={"X-User-Id": "u_peruser"}).json()
         assert mine["number"] == "+912222222222"
         assert mine["source"] == "user"
-        assert mine["busy_activate"] == "*67*+912222222222#"
+        assert mine["busy_activate"] == "**67*+912222222222#"
         # A different owner still gets the shared default.
         theirs = c.get("/assistant/forwarding",
                        headers={"X-User-Id": "u_someone_else"}).json()

@@ -65,6 +65,17 @@ variable "livekit_secret" {
   default   = ""
 }
 
+# Required for the caller to ever hear the AI. The app asks the backend where to
+# send unknown calls; with this empty the answer is "not configured", the owner
+# cannot arm forwarding, and the call is never handed to LiveKit at all — which
+# is what silently killed AI answering in production. Set it to the number
+# attached to the LiveKit inbound trunk / dispatch rule.
+variable "assistant_forward_number" {
+  type        = string
+  default     = ""
+  description = "DID unknown calls are forwarded to (empty = AI answering is unreachable)"
+}
+
 variable "whatsapp_token" {
   type      = string
   sensitive = true

@@ -11,7 +11,6 @@ import androidx.compose.material3.Surface
 import androidx.core.content.ContextCompat
 import com.intercept.presentation.navigation.NavGraph
 import com.intercept.presentation.theme.InterceptTheme
-import com.intercept.service.AutoScreenService
 
 class MainActivity : ComponentActivity() {
 
@@ -70,29 +69,13 @@ class MainActivity : ComponentActivity() {
         } catch (_: Exception) {
         }
 
-        // Check if this is an auto-screened call (headless path)
-        val caller = try {
-            AutoScreenService.activeCallNumber ?: intent?.getStringExtra(EXTRA_CALL_NUMBER)
-        } catch (_: Exception) {
-            null
-        }
-
-        // Auto-screened calls start at the live screen directly
-        val startLiveSid = try {
-            AutoScreenService.activeCallSession
-        } catch (_: Exception) {
-            null
-        }
-
-        // Only set startAtIncoming if not already in auto-screening session
-        val startAtIncoming = intent?.getBooleanExtra(EXTRA_INCOMING, false) == true &&
-            startLiveSid == null
+        val startAtIncoming = intent?.getBooleanExtra(EXTRA_INCOMING, false) == true
 
         val startAtAnalyze = intent?.getBooleanExtra(EXTRA_ANALYZE, false) == true &&
             !startAtIncoming
-        // Notification tap during headless screening: jump straight to the transcript.
+        // Notification tap while a forwarded call is live: straight to the transcript.
         val watchSid = intent?.getStringExtra(EXTRA_WATCH_SID)?.takeIf { it.isNotBlank() }
-            ?.takeUnless { startAtIncoming } ?: startLiveSid
+            ?.takeUnless { startAtIncoming }
         // Share-sheet entry: verify the shared link/text immediately.
         val shared = if (intent?.action == android.content.Intent.ACTION_SEND) {
             intent.getStringExtra(android.content.Intent.EXTRA_TEXT)

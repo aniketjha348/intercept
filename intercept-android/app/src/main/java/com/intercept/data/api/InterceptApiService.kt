@@ -46,6 +46,10 @@ interface InterceptApiService {
     @GET("assistant/forwarding")
     suspend fun forwarding(): ForwardingDto
 
+    /** Binds this owner to the DID the cloud AI answers on. */
+    @POST("assistant/forwarding")
+    suspend fun bindForwarding(@Body body: Map<String, String>): Map<String, String>
+
     @POST("analyze/text")
     suspend fun analyzeText(@Body body: AnalyzeTextRequest): AnalyzeResponse
 

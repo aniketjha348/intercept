@@ -7,9 +7,7 @@ import com.intercept.data.DemoScript
 import com.intercept.data.api.CallEvent
 import com.intercept.data.api.CallWebSocket
 import com.intercept.di.AppContainer
-import com.intercept.service.AutoScreenService
 import com.intercept.speech.CallerStt
-import com.intercept.speech.LiveVoice
 import com.intercept.telecom.InterceptInCallService
 import com.intercept.domain.model.ChatLine
 import com.intercept.domain.model.RiskLevel
@@ -41,7 +39,6 @@ data class LiveUiState(
     val humanMode: Boolean = false,
     val realCall: Boolean = false,
     val listening: Boolean = false,
-    val voiceLive: Boolean = false,
     val lkTransport: Boolean = false,
     val interim: String = "",
     val ended: Boolean = false,
@@ -63,7 +60,6 @@ class LiveCallViewModel(
     private var useSocket = true
     private var demoJob: Job? = null
     private var stt: CallerStt? = null
-    private var live: LiveVoice? = null
     private var lkCall: com.intercept.speech.LiveKitCall? = null
     /**
      * Remote watch (forwarded call): our backend session, agent's voice. While
@@ -73,14 +69,20 @@ class LiveCallViewModel(
      */
     private var watching: Boolean = container.watchOnlySid == sessionId
 
+    /**
+     * The room this call is happening in. A forwarded call lives in the SIP
+     * dispatch rule's room (named after the caller) — NOT in `intercept-<id>` —
+     * so the room is resolved once here and reused for watch and for join.
+     * Asking for the wrong room joins an empty room silently.
+     */
+    private val callRoom: String =
+        container.watchOnlyRoom?.takeIf { it.isNotBlank() } ?: "intercept-$sessionId"
+
     init {
         if (watching) {
             _state.update { it.copy(watchOnly = true) }
         }
     }
-    /** Headless service is driving this session (talking + listening) — UI only watches. */
-    private val driven: Boolean = AutoScreenService.activeCallSession == sessionId
-
     fun connect() {
         try {
             socket = CallWebSocket(container.http, container.backendUrl, sessionId, ::onEvent) {
@@ -118,7 +120,7 @@ class LiveCallViewModel(
             }
             is CallEvent.AiReply -> {
                 _state.update { it.copy(guardianText = e.text) }
-                if (!driven && !watching) {
+                if (!watching) {
                     viewModelScope.launch {
                         container.speakBest(sessionId, e.text, _state.value.realCall)
                     }
@@ -166,7 +168,7 @@ class LiveCallViewModel(
                     endedReason = if (r.mustTerminate) r.simple else it.endedReason,
                 )
             }
-            if (!driven && !watching) {
+            if (!watching) {
                 container.speakBest(sessionId, r.reply, _state.value.realCall)
             }
             if (r.mustTerminate) stopRealCallAudio()
@@ -190,19 +192,14 @@ class LiveCallViewModel(
     }
 
     /**
-     * Production path: a real telecom call is up. Route audio to speaker,
-     * point TTS at the call stream. STT starts separately via startListening()
-     * (needs RECORD_AUDIO granted — the screen asks for it).
+     * Production path: a real telecom call is up. It is read-only — nothing
+     * here plays audio into the call, because a store app cannot reach a
+     * cellular uplink (see InterceptInCallService). Transcript, risk and the
+     * take-over controls are the whole feature; the caller only hears the AI
+     * when the call was forwarded to LiveKit. STT starts separately via
+     * startListening() (needs RECORD_AUDIO granted — the screen asks for it).
      */
     fun beginRealScreening() {
-        try {
-            container.audio.enter()
-        } catch (_: Exception) {
-        }
-        try {
-            container.tts.setCallMode(true)
-        } catch (_: Exception) {
-        }
         try {
             InterceptInCallService.setSpeaker(true)
         } catch (_: Exception) {
@@ -284,125 +281,100 @@ class LiveCallViewModel(
     }
 
     /**
-     * Realtime voice path (beta): mic streams to the Live bridge, guardian
-     * voice streams back natively. Any failure falls back to STT+TTS turns.
+     * Live transport: join the call's LiveKit room — the same room the SIP leg
+     * landed the agent in — and either just hear it (a watch) or publish this
+     * phone's mic to take the conversation over. Transcript and risk keep
+     * arriving through the backend session the agent posts turns into.
+     *
+     * If the room cannot be reached we fall back to on-device speech recognition
+     * so the screen still works; we never claim a mic is live when it is not.
      */
-    fun startLiveVoice() {
-        if (_state.value.voiceLive || _state.value.ended) return
-        if (watching) return
-        stopListening()
-        val voice = try {
-            LiveVoice(container.appContextForVoice(), container.backendUrl, sessionId)
-        } catch (_: Exception) {
-            null
-        } ?: run {
-            _state.update { it.copy(error = "Live voice unavailable — typed/mic turns still work.") }
-            return
-        }
-        voice.onTranscript = { speaker, text ->
-            if (text.isNotBlank()) {
-                _state.update { it.copy(transcript = it.transcript + ChatLine(speaker, text)) }
-            }
-        }
-        voice.onRisk = { score, level ->
-            _state.update { it.copy(risk = score, level = RiskLevel.of(level)) }
-        }
-        voice.onTerminated = { reason ->
-            _state.update {
-                it.copy(ended = true, endedReason = reason.ifEmpty { it.endedReason })
-            }
-            stopRealCallAudio()
-        }
-        voice.onError = {
-            live = null
-            _state.update {
-                it.copy(voiceLive = false, error = "Live voice dropped — mic/typed turns still work.")
-            }
-        }
-        live = voice
-        val ok = try {
-            voice.start(container.http)
-        } catch (_: Exception) {
-            false
-        }
-        if (!ok) {
-            live = null
-            _state.update { it.copy(error = "Live voice unavailable — mic/typed turns still work.") }
-            return
-        }
-        _state.update { it.copy(voiceLive = true, listening = true, error = null) }
-    }
-
-    fun stopLiveVoice() {
-        try {
-            live?.stop()
-        } catch (_: Exception) {
-        }
-        live = null
-        if (_state.value.voiceLive || _state.value.listening) {
-            _state.update { it.copy(voiceLive = false, listening = false) }
-        }
-    }
-
-    /**
-     * Studio transport: join the call's LiveKit room, publish the mic, hear
-     * the agent natively. Transcript/risk keep arriving through the backend
-     * session (the agent posts turns there). Any failure → STT path.
-     */
-    fun startLiveKitTransport() {
+    fun startLiveKitTransport(publishMic: Boolean = true) {
         if (_state.value.lkTransport || _state.value.ended) return
-        if (watching) return
+        // A watcher listens. It never opens the mic into someone else's call.
+        if (watching && publishMic) return
         stopListening()
-        stopLiveVoice()
         viewModelScope.launch {
             val tok = try {
-                container.repo.livekitToken(sessionId)
+                container.repo.livekitToken(sessionId, callRoom)
             } catch (_: Exception) {
                 null
             }
-            if (tok == null) {
-                _state.update { it.copy(error = "Studio transport unavailable — mic/typed turns still work.") }
-                return@launch
-            }
-            val call = try {
+            val call = if (tok == null) null else try {
                 com.intercept.speech.LiveKitCall(container.appContextForVoice())
             } catch (_: Exception) {
                 null
-            } ?: run {
-                _state.update { it.copy(error = "Studio transport unavailable — mic/typed turns still work.") }
+            }
+            if (tok == null || call == null) {
+                fallbackToLocalMic(publishMic)
                 return@launch
             }
             call.onConnected = {
-                _state.update { it.copy(lkTransport = true, error = null) }
-                viewModelScope.launch {
-                    try {
-                        container.repo.livekitDispatch(tok.room)
-                    } catch (_: Exception) {
+                _state.update {
+                    it.copy(lkTransport = true, listening = publishMic, error = null)
+                }
+                // Only OUR OWN rooms need the agent summoned. A SIP room already
+                // has it (the dispatch rule put it there) and dispatching again
+                // would put a second agent in the room, talking over the first —
+                // which the caller hears as two overlapping voices.
+                if (publishMic && callRoom == "intercept-$sessionId") {
+                    viewModelScope.launch {
+                        try {
+                            container.repo.livekitDispatch(callRoom)
+                        } catch (_: Exception) {
+                        }
                     }
                 }
             }
             call.onError = { msg ->
                 lkCall = null
                 _state.update {
-                    it.copy(lkTransport = false,
-                        error = "Studio transport dropped ($msg) — mic/typed turns still work.")
+                    it.copy(lkTransport = false, listening = false,
+                        error = "Live transport dropped ($msg) — mic/typed turns still work.")
                 }
             }
             call.onDisconnected = {
                 lkCall = null
                 if (_state.value.lkTransport) {
-                    _state.update { it.copy(lkTransport = false) }
+                    _state.update { it.copy(lkTransport = false, listening = false) }
                 }
             }
             lkCall = call
             try {
-                call.connect(tok.url, tok.token)
+                call.connect(tok.url, tok.token, publishMic)
             } catch (_: Exception) {
                 lkCall = null
-                _state.update { it.copy(error = "Studio transport unavailable — mic/typed turns still work.") }
+                fallbackToLocalMic(publishMic)
             }
         }
     }
+
+    /**
+     * The room is out of reach (no LiveKit on the backend, call already ended):
+     * keep the screen useful with on-device speech recognition instead of an
+     * error the owner cannot act on.
+     */
+    private fun fallbackToLocalMic(publishMic: Boolean) {
+        _state.update { it.copy(lkTransport = false, listening = false) }
+        if (!publishMic) {
+            _state.update { it.copy(error = "Could not join the call room — transcript only.") }
+            return
+        }
+        startListening()
+    }
+
+    /** Publish or mute this phone's mic in the call's room. */
+    fun setMicEnabled(on: Boolean) {
+        if (watching && on) return
+        try {
+            lkCall?.setMic(on)
+        } catch (_: Exception) {
+        }
+        _state.update { it.copy(listening = on) }
+    }
+
+    /** Watch a forwarded call: in the room, muted, hearing the agent. */
+    fun startWatching() = startLiveKitTransport(publishMic = false)
 
     fun stopLiveKitTransport() {
         try {
@@ -410,12 +382,13 @@ class LiveCallViewModel(
         } catch (_: Exception) {
         }
         lkCall = null
-        if (_state.value.lkTransport) {
-            _state.update { it.copy(lkTransport = false) }
+        if (_state.value.lkTransport || _state.value.listening) {
+            _state.update { it.copy(lkTransport = false, listening = false) }
         }
     }
 
-    /** Hang up the telecom call + restore audio (backend session ends separately). */
+
+    /** Hang up the telecom call (backend session ends separately). */
     private fun stopRealCallAudio() {
         try {
             container.stopVoice()
@@ -424,14 +397,6 @@ class LiveCallViewModel(
         stopListening()
         try {
             InterceptInCallService.hangup()
-        } catch (_: Exception) {
-        }
-        try {
-            container.audio.exit()
-        } catch (_: Exception) {
-        }
-        try {
-            container.tts.setCallMode(false)
         } catch (_: Exception) {
         }
         if (_state.value.realCall) _state.update { it.copy(realCall = false) }
@@ -446,6 +411,7 @@ class LiveCallViewModel(
         if (!watching) return
         watching = false
         container.watchOnlySid = null
+        container.watchOnlyRoom = null
         _state.update { it.copy(watchOnly = false) }
         takeover()
     }
@@ -487,7 +453,6 @@ class LiveCallViewModel(
 
     fun endCall() = viewModelScope.launch {
         stopLiveKitTransport()
-        stopLiveVoice()
         stopRealCallAudio()
         // Watching is not owning: leaving the screen stops the watch, it must
         // never terminate the session the voice agent is still running.
@@ -503,11 +468,13 @@ class LiveCallViewModel(
 
     override fun onCleared() {
         stopLiveKitTransport()
-        stopLiveVoice()
         stopRealCallAudio()
         socket?.close()
         // Leave watch mode clean: the next real screening must not inherit it.
-        if (watching) container.watchOnlySid = null
+        if (watching) {
+            container.watchOnlySid = null
+            container.watchOnlyRoom = null
+        }
         super.onCleared()
     }
 

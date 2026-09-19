@@ -50,7 +50,6 @@ import com.intercept.presentation.theme.Room
 import com.intercept.presentation.theme.RoomInk
 import com.intercept.presentation.theme.RoomMuted
 import com.intercept.presentation.theme.RoomRaised
-import com.intercept.service.AutoScreenService
 import com.intercept.telecom.InterceptInCallService
 import kotlinx.coroutines.launch
 
@@ -67,9 +66,6 @@ fun IncomingCallScreen(nav: NavController, container: AppContainer) {
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    // Auto-protect already screening this caller? Join it — no duplicate session.
-    val liveSid = AutoScreenService.activeCallSession
-        .takeIf { it != null && AutoScreenService.activeCallNumber == caller }
     // A REAL cellular call ringing right now (seen via telephony state even
     // when we are not the dialer and our InCallService never fires).
     val ringingNow = remember {
@@ -121,7 +117,7 @@ fun IncomingCallScreen(nav: NavController, container: AppContainer) {
                 ) {
                     StatusDot(RiskSuspiciousOnRoom, size = 8.dp)
                     Text(
-                        if (liveSid != null) "Already being screened" else "Not in your contacts",
+                        "Not in your contacts",
                         style = MaterialTheme.typography.labelMedium,
                         color = RiskSuspiciousOnRoom,
                     )
@@ -136,29 +132,21 @@ fun IncomingCallScreen(nav: NavController, container: AppContainer) {
                 Spacer(Modifier.height(14.dp))
 
                 Text(
-                    "Intercept can pick this up, talk to the caller, and work out what they want — before you say a word.",
+                    "Intercept listens in, works out what they want and reads the risk live — before you say a word. " +
+                        "To have the AI answer the call itself, turn on AI answering from Home.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = RoomMuted,
                 )
-                if (liveSid == null) {
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        "Real call? If the phone is still ringing, answer it on speaker first — then tap below.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = RoomMuted,
-                    )
-                }
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Real call? If the phone is still ringing, answer it on speaker first — then tap below.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = RoomMuted,
+                )
 
                 Spacer(Modifier.height(28.dp))
                 Button(
                     onClick = {
-                        // Already being screened headless? Just watch it live.
-                        if (liveSid != null) {
-                            nav.navigate(Routes.live(liveSid)) {
-                                popUpTo(Routes.HOME)
-                            }
-                            return@Button
-                        }
                         busy = true
                         error = null
                         // Try to pick up the real telecom call. False = we are not
@@ -198,7 +186,7 @@ fun IncomingCallScreen(nav: NavController, container: AppContainer) {
                     } else {
                         Icon(Icons.Filled.Shield, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.size(8.dp))
-                        Text(if (liveSid != null) "Watch live screening" else "Let Intercept answer")
+                        Text("Open live screening")
                     }
                 }
                 Spacer(Modifier.height(10.dp))

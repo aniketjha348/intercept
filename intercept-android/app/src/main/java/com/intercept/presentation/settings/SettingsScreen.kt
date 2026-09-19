@@ -92,6 +92,8 @@ import androidx.compose.ui.unit.dp
 
 import androidx.navigation.NavController
 
+import com.intercept.presentation.navigation.Routes
+
 import com.intercept.di.AppContainer
 
 import com.intercept.presentation.components.SectionLabel
@@ -166,10 +168,6 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
     var autoCalls by remember { mutableStateOf(container.autoCalls) }
 
     var autoSms by remember { mutableStateOf(container.autoSms) }
-
-    var liveVoice by remember { mutableStateOf(container.liveVoice) }
-
-    var lkTransport by remember { mutableStateOf(container.livekitTransport) }
 
     var autoApps by remember { mutableStateOf(container.autoApps) }
 
@@ -414,28 +412,6 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            SwitchRow(
-
-                title = "Real-time voice (beta)",
-
-                subtitle = "Talk live instead of turn-by-turn. Needs good network.",
-
-                checked = liveVoice,
-
-            ) { liveVoice = it; container.liveVoice = it }
-
-            SwitchRow(
-
-                title = "Studio transport (beta)",
-
-                subtitle = "LiveKit mic publish + agent audio. Transcript still flows.",
-
-                checked = lkTransport,
-
-            ) { lkTransport = it; container.livekitTransport = it }
-
-
-
             Spacer(Modifier.height(28.dp))
 
             SectionLabel("Auto-protect")
@@ -444,13 +420,31 @@ fun SettingsScreen(nav: NavController, container: AppContainer) {
 
             SwitchRow(
 
-                title = "Auto-answer unknown calls",
+                title = "Let the AI answer unknown calls",
 
-                subtitle = "AI screens strangers on its own.",
+                subtitle = "Strangers are handed to the cloud AI — arm AI answering from Home first.",
 
                 checked = autoCalls,
 
-            ) { autoCalls = it; container.autoCalls = it; AlwaysOnService.sync(ctx) }
+            ) {
+
+                autoCalls = it
+
+                container.autoCalls = it
+
+                AlwaysOnService.sync(ctx)
+
+                // Automatic protection only becomes real once the carrier can
+
+                // hand the call to the cloud AI, so take the owner straight
+
+                // there — a switch that quietly does nothing is worse than no
+
+                // switch at all.
+
+                if (it && !container.forwardingOn) nav.navigate(Routes.FORWARDING)
+
+            }
 
             SwitchRow(
 
