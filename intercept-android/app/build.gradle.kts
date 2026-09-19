@@ -12,8 +12,8 @@ android {
         applicationId = "com.intercept"
         minSdk = 29
         targetSdk = 34
-        versionCode = 26
-        versionName = "0.7.3"
+        versionCode = 27
+        versionName = "0.7.4"
 
         // WebRTC's jingle .so is 11–15 MB per ABI, and the x86 pair exists only
         // for emulators. Shipping them cost ~27 MB on every download for phones

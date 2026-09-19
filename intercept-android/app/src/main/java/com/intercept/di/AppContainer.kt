@@ -232,6 +232,13 @@ class AppContainer(context: Context) {
     var watchOnlyRoom: String? = null
 
     /**
+     * The live demo's session (Home → demo ring). Set so the Live screen joins
+     * the AI's room and opens the mic by itself: on stage, the fewer taps
+     * between "look" and "the AI is talking to the caller", the better.
+     */
+    var demoLiveSid: String? = null
+
+    /**
      * True when the user started screening a REAL ringing call we could not pick
      * up ourselves (not default dialer): they answer on speaker, AI listens
      * through the mic. Consumed once by the Live screen.

@@ -263,7 +263,7 @@ fun HomeScreen(nav: NavController, container: AppContainer) {
                     nav.navigate(Routes.INCOMING)
                 },
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Try a demo scam call", color = Muted) }
+            ) { Text("Live demo — ring a scam call, let the AI take it", color = Ink) }
 
             Spacer(Modifier.height(24.dp))
         }

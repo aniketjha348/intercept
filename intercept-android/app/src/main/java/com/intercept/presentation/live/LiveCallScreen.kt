@@ -147,6 +147,14 @@ fun LiveCallScreen(nav: NavController, container: AppContainer, sid: String) {
             vm.startWatching()
             return@LaunchedEffect
         }
+        // Live demo (Home → demo ring): put the agent in the room and open the
+        // mic here, so the AI starts talking to the caller on this screen with
+        // no extra tap. This is the path a pitch runs on.
+        if (container.demoLiveSid == sid) {
+            container.demoLiveSid = null
+            ensureMicThenListen()
+            return@LaunchedEffect
+        }
         // Real telecom call up? Start hearing and transcribing automatically.
         if (InterceptInCallService.hasCall()) {
             vm.beginRealScreening()

@@ -164,6 +164,9 @@ fun IncomingCallScreen(nav: NavController, container: AppContainer) {
                                 val sid = container.repo.startCall(caller, container.ownerName)
                                 container.sessionCallers[sid] = caller
                                 container.lastSessionId = sid
+                                // Demo session: the Live screen puts the AI in the
+                                // room and opens the mic without another tap.
+                                container.demoLiveSid = sid
                                 nav.navigate(Routes.live(sid)) {
                                     popUpTo(Routes.HOME)
                                 }
