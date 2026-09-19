@@ -370,5 +370,22 @@
       "Is version me taze fixes aur sudhaar",
       "App kholte hi update mil jayega"
     ]
+  },
+  {
+    "version_code": 26,
+    "version_name": "0.7.3",
+    "date": "2026-09-19",
+    "force": false,
+    "apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk",
+    "notes_en": [
+      "Keep Intercept next to the phone app, never in place of it",
+      "Release v0.7.2: changelog feeds (auto)",
+      "Give a ringing call an Answer button again",
+      "Release v0.7.1: changelog feeds (auto)"
+    ],
+    "notes_hi": [
+      "Is version me taze fixes aur sudhaar",
+      "App kholte hi update mil jayega"
+    ]
   }
 ]
