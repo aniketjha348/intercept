@@ -340,5 +340,21 @@
       "Is version me taze fixes aur sudhaar",
       "App kholte hi update mil jayega"
     ]
+  },
+  {
+    "version_code": 24,
+    "version_name": "0.7.1",
+    "date": "2026-09-19",
+    "force": false,
+    "apk_url": "https://github.com/aniketjha348/intercept/releases/latest/download/app-debug.apk",
+    "notes_en": [
+      "Fix the build: the live-session DTO never carried its room",
+      "Make forwarded calls actually reach the AI",
+      "Release v0.7.0: changelog feeds (auto)"
+    ],
+    "notes_hi": [
+      "Is version me taze fixes aur sudhaar",
+      "App kholte hi update mil jayega"
+    ]
   }
 ]
