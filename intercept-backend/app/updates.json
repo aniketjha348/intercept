@@ -313,5 +313,18 @@
       "Is version me taze fixes aur sudhaar",
       "App kholte hi update mil jayega"
     ]
+  },
+  {
+    "version_code": 25,
+    "version_name": "0.7.2",
+    "date": "2026-09-19",
+    "force": false,
+    "notes_en": [
+      "Give a ringing call an Answer button again"
+    ],
+    "notes_hi": [
+      "Is version me taze fixes aur sudhaar",
+      "App kholte hi update mil jayega"
+    ]
   }
 ]
