@@ -117,6 +117,13 @@ data class LiveSessionDto(
     val objective: String = "",
     @SerialName("claimed_org") val claimedOrg: String = "",
     val escalating: Boolean = false,
+    /**
+     * The LiveKit room the call is really in. A forwarded call is answered in the
+     * SIP rule's room (named after the caller), so the app must join THIS room
+     * rather than its own `intercept-<session id>` guess — the wrong room joins
+     * silently and the owner hears nothing.
+     */
+    val room: String = "",
 )
 
 @Serializable
